@@ -1,0 +1,13 @@
+dart_defines.env
+dart_defines.json
+lib/core/services/firebase_config.dart
+google-services.json
+
+# Android — machine-specific, never commit these
+android/local.properties
+android/key.properties
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
+android/.gradle/buildOutputCleanup/buildOutputCleanup.lock

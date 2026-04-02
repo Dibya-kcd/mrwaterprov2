@@ -1,0 +1,119 @@
+{
+  "rules": {
+    // ══════════════════════════════════════════════════════════════════════════
+    // MrWater Pro — Firebase Realtime Database Security Rules (Multi-Tenant)
+    // Project : mrwaterprov1-54c3f
+    // Version : 2.2  (Refined Singleton Validation + Diagnostic Support)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    "companies": {
+      "$companyId": {
+        // Only the authenticated owner (UID) can access their company data
+        ".read":  "auth != null && auth.uid == $companyId",
+        ".write": "auth != null && auth.uid == $companyId",
+
+        // ── Settings (Singleton) ───────────────────────────────────────────
+        "settings": {
+          // Allow full settings object write
+          ".validate": "newData.hasChildren(['appName', 'businessName', 'ownerName']) || !newData.exists()",
+          // Allow diagnostic child write
+          "$diagId": {
+            ".validate": "newData.hasChild('diag')"
+          }
+        },
+
+        // ── Staff ──────────────────────────────────────────────────────────
+        "staff": {
+          "$staffId": {
+            ".validate": "newData.hasChildren(['id', 'name', 'pin', 'isActive']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Customers ──────────────────────────────────────────────────────
+        "customers": {
+          "$customerId": {
+            ".validate": "newData.hasChildren(['id', 'name', 'phone', 'createdAt']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Transactions ───────────────────────────────────────────────────
+        "transactions": {
+          "$txId": {
+            ".validate": "newData.hasChildren(['id','customerId','customerName','date','createdAt','billedAmount']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Inventory (Singleton) ──────────────────────────────────────────
+        "inventory": {
+          ".validate": "newData.hasChildren(['coolTotal','coolStock','petTotal','petStock']) || !newData.exists()",
+          "$diagId": {
+            ".validate": "newData.hasChild('diag')"
+          }
+        },
+
+        // ── Expenses ───────────────────────────────────────────────────────
+        "expenses": {
+          "$expenseId": {
+            ".validate": "newData.hasChildren(['id','amount','category','date']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Load / Unload Trips ───────────────────────────────────────────
+        "load_unload": {
+          "$tripId": {
+            ".validate": "newData.hasChildren(['id','date','coolLoaded','petLoaded']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Audit Log ──────────────────────────────────────────────────────
+        "auditLog": {
+          "$auditId": {
+            ".validate": "newData.hasChildren(['id','type','description','performedBy','createdAt']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Areas ──────────────────────────────────────────────────────────
+        "areas": {
+          "$areaId": {
+            ".validate": "newData.hasChildren(['id','name']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Vehicles ───────────────────────────────────────────────────────
+        "vehicles": {
+          "$vehicleId": {
+            ".validate": "newData.hasChildren(['id','name','number']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Ledger Entries ─────────────────────────────────────────────────
+        "ledgerEntries": {
+          "$entryId": {
+            ".validate": "newData.hasChildren(['id','customerId','txId','date','type','debit','credit','balance']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Transaction Revisions ─────────────────────────────────────────
+        "transactionRevisions": {
+          "$revId": {
+            ".validate": "newData.hasChildren(['revId','txId','revNumber','createdAt','editedBy']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Inventory Movements ────────────────────────────────────────────
+        "inventoryMovements": {
+          "$invId": {
+            ".validate": "newData.hasChildren(['invId','type','coolDelta','petDelta','createdAt']) || newData.hasChild('diag')"
+          }
+        },
+
+        // ── Payments ───────────────────────────────────────────────────────
+        "payments": {
+          "$paymentId": {
+            ".validate": "newData.hasChildren(['paymentId','txId','customerId','amount','mode','date','type']) || newData.hasChild('diag')"
+          }
+        }
+      }
+    }
+  }
+}

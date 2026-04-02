@@ -1,0 +1,57 @@
+name: mrwaterprov1
+description: MrWater Pro — Water jar delivery management app
+
+publish_to: 'none'
+version: 2.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── Firebase ──────────────────────────────────────────────────────────────
+  firebase_core: ^3.10.1
+  firebase_auth: ^5.4.1              # Authentication (email/password)
+  firebase_database: ^11.2.1         # Realtime Database
+  firebase_storage: ^12.4.1          # NEW — dynamic company logo URL upload
+
+  # ── State management ──────────────────────────────────────────────────────
+  flutter_riverpod: ^2.6.1
+
+  # ── Storage / persistence ─────────────────────────────────────────────────
+  shared_preferences: ^2.3.5
+
+  # ── UI / fonts ────────────────────────────────────────────────────────────
+  google_fonts: ^6.2.1
+  # video_player removed — splash now uses pure Flutter animation
+
+  # ── Utilities ─────────────────────────────────────────────────────────────
+  uuid: ^4.5.1
+  intl: ^0.20.2
+
+  # ── Reports / PDF ─────────────────────────────────────────────────────────
+  pdf: ^3.11.1
+  printing: ^5.13.2
+  path_provider: ^2.1.5
+  share_plus: ^10.1.4
+
+  # ── Media / OCR ───────────────────────────────────────────────────────────
+  image_picker: ^1.1.2
+  google_mlkit_text_recognition: ^0.14.0
+
+  # ── Voice input ───────────────────────────────────────────────────────────
+  speech_to_text: ^7.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/mrwater_logo.png
+    # splash_video.mp4 no longer needed — pure Flutter animation replaces video
