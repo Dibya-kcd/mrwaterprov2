@@ -1,0 +1,132 @@
+name: Deploy Web + Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  deploy-web:
+    name: Web - GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.2'
+          channel: 'stable'
+          cache: false
+
+      - name: Write local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Web
+        run: |
+          if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
+            echo "ERROR: FIREBASE_CONFIG_JSON is missing!"
+            exit 1
+          fi
+          printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
+          flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: build/web
+          branch: gh-pages
+
+  build-apk:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.2'
+          channel: 'stable'
+          cache: false
+
+      - name: Flutter Doctor
+        run: flutter doctor -v
+
+      - name: Accept Android Licenses
+        run: yes | flutter doctor --android-licenses || true
+
+      - name: Precache Flutter Android
+        run: flutter precache --android
+
+      - name: Write local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
+          cat android/local.properties
+
+      - name: Flutter clean
+        run: flutter clean
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build APK
+        run: |
+          if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
+            echo "ERROR: FIREBASE_CONFIG_JSON is missing!"
+            exit 1
+          fi
+          printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
+          printf '%s' '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/mrwater-release.jks
+          flutter build apk --release --dart-define-from-file=dart_defines.json
+        env:
+          KEYSTORE_FILE: "mrwater-release.jks"
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrwater-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "MrWater Build ${{ github.run_number }}"
+          body: |
+            ### Download APK
+            - app-release.apk - Universal installer for all Android phones
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
