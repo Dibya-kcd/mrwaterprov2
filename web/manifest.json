@@ -1,0 +1,15 @@
+{
+  "name": "MrWater",
+  "short_name": "MrWater",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0A1F6E",
+  "theme_color": "#1A6BFF",
+  "description": "Smart Water Jar Delivery Management for Indian businesses",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": [],
+  "screenshots": [],
+  "categories": ["business", "productivity"],
+  "lang": "en-IN"
+}
