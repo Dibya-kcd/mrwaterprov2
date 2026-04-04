@@ -1770,13 +1770,26 @@ class StaffMember {
   // permissions: 'transactions' | 'customers' | 'load_unload'
   final List<String> permissions;
 
+  /// SHA-256 hash of the PIN (salt:pin). Stored in Firebase — never plain text.
+  /// Empty string means PIN has NOT been hashed yet (legacy plain-text pin field).
+  final String pinHash;
+
+  /// Per-user random salt used when hashing the PIN. Stored alongside pinHash.
+  /// For new users this is set to the user's UID. For legacy records it is ''.
+  final String pinSalt;
+
   const StaffMember({
     required this.id, required this.name, required this.phone,
     required this.pin, this.isActive = true,
     this.permissions = const ['dashboard','transactions','customers','inventory','load_unload','payments','notifications'],
+    this.pinHash = '',
+    this.pinSalt = '',
   });
 
   bool can(String perm) => permissions.contains(perm);
+
+  /// True if this record already uses hashed PIN storage.
+  bool get hasPinHash => pinHash.isNotEmpty && pinSalt.isNotEmpty;
 
   // ── Owner check: null sessionUser = owner = full access ───────────────────
   // This is only used for staff members. Owner always has sessionUser = null.
@@ -1786,21 +1799,27 @@ class StaffMember {
   StaffMember copyWith({
     String? name, String? phone, String? pin,
     bool? isActive, List<String>? permissions,
+    String? pinHash, String? pinSalt,
   }) => StaffMember(
     id: id, name: name ?? this.name, phone: phone ?? this.phone,
     pin: pin ?? this.pin, isActive: isActive ?? this.isActive,
     permissions: permissions ?? this.permissions,
+    pinHash: pinHash ?? this.pinHash,
+    pinSalt: pinSalt ?? this.pinSalt,
   );
 
   Map<String, dynamic> toJson() => {
     'id': id, 'name': name, 'phone': phone,
     'pin': pin, 'isActive': isActive, 'permissions': permissions,
+    'pinHash': pinHash, 'pinSalt': pinSalt,
   };
 
   factory StaffMember.fromJson(Map<String, dynamic> j) => StaffMember(
     id: j['id'], name: j['name'], phone: j['phone'] ?? '',
     pin: j['pin'], isActive: j['isActive'] ?? true,
     permissions: List<String>.from(j['permissions'] ?? ['dashboard','transactions','customers','inventory','load_unload','payments','notifications']),
+    pinHash: j['pinHash'] ?? '',
+    pinSalt: j['pinSalt'] ?? '',
   );
 }
 
@@ -1866,3 +1885,10 @@ final authStateProvider = StreamProvider<User?>((ref) => FirebaseAuth.instance.a
 
 // Global flag to indicate if the user has passed the PIN screen
 final pinUnlockedProvider = StateProvider<bool>((ref) => false);
+
+// ── Inactivity auto-lock provider ─────────────────────────────────────────────
+// Tracks the last user-activity timestamp.  SessionManager polls this every
+// 30 s and locks the app when idle > kInactivityTimeout (5 min).
+// Call: ref.read(lastActivityProvider.notifier).state = DateTime.now()
+// on every meaningful user interaction, OR use the ActivityDetector wrapper.
+final lastActivityProvider = StateProvider<DateTime>((ref) => DateTime.now());

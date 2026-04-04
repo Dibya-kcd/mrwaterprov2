@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/app_state.dart';
 import 'core/services/firebase_config.dart';
+import 'core/services/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'features/company_login_screen.dart';
 import 'features/main_scaffold.dart';
@@ -85,15 +86,34 @@ class MrWaterApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings  = ref.watch(settingsProvider);
     final themeMode = ref.watch(themeModeProvider);
-    return MaterialApp(
-      title: settings.appName,
-      debugShowCheckedModeBanner: false,
-      theme:     AppTheme.light(settings.accentColor),
-      darkTheme: AppTheme.dark(settings.accentColor),
-      themeMode: themeMode,
-      home: const _AppGate(),
+    return ActivityDetector(
+      child: MaterialApp(
+        title: settings.appName,
+        debugShowCheckedModeBanner: false,
+        theme:     AppTheme.light(settings.accentColor),
+        darkTheme: AppTheme.dark(settings.accentColor),
+        themeMode: themeMode,
+        home: const _AppGate(),
+      ),
     );
   }
+}
+
+// ── Activity Detector ─────────────────────────────────────────────────────────
+// Wraps the entire app in a transparent GestureDetector (HitTestBehavior.translucent
+// so it never blocks child taps) and records activity on any pointer event.
+// This feeds SessionManager's inactivity watchdog.
+class ActivityDetector extends StatelessWidget {
+  final Widget child;
+  const ActivityDetector({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    behavior: HitTestBehavior.translucent,
+    onPointerDown: (_) => SessionManager.instance.recordActivity(),
+    onPointerMove: (_) => SessionManager.instance.recordActivity(),
+    child: child,
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -195,6 +215,9 @@ class _AppGateState extends ConsumerState<_AppGate> {
       ref.read(sessionUserProvider.notifier).state = null;
     }
     ref.read(pinUnlockedProvider.notifier).state = true;
+    // Start inactivity watchdog — will auto-lock after kInactivityTimeout idle
+    SessionManager.instance.startWatching(ref);
+    SessionManager.instance.persistUnlocked();
     _goto(_Screen.app);
   }
 
@@ -209,6 +232,9 @@ class _AppGateState extends ConsumerState<_AppGate> {
       if (user != null) _initOwnerSession(user);
       ref.read(sessionUserProvider.notifier).state = null;
       ref.read(pinUnlockedProvider.notifier).state = true;
+      // Start inactivity watchdog
+      SessionManager.instance.startWatching(ref);
+      SessionManager.instance.persistUnlocked();
       _goto(_Screen.app);
     } else {
       _goto(_Screen.pin);

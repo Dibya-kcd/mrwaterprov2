@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
+import '../core/utils/pin_hash_util.dart';
 import 'mr_water_logo.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -79,23 +80,50 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
   Future<void> _verify() async {
     await Future.delayed(const Duration(milliseconds: 80));
     if (!mounted) return;
+
     // Exclude the Firebase owner's UID from staff PIN matching.
     // Owner must use "Login as Owner" button — not the PIN keypad.
-    // This prevents the owner's StaffMember record (with limited permissions)
-    // from being used when owner enters their own PIN.
     final ownerUid = FirebaseAuth.instance.currentUser?.uid;
-    final staff = ref.read(staffProvider).cast<StaffMember?>()
-        .firstWhere(
-          (s) =>
-              s?.pin == _pin &&
-              (s?.isActive ?? false) &&
-              s?.id != ownerUid,   // ← exclude owner record
-          orElse: () => null,
-        );
 
-    if (staff != null) {
+    final allStaff = ref.read(staffProvider);
+    StaffMember? matched;
+
+    for (final s in allStaff) {
+      // Skip owner record and inactive staff
+      if (s.id == ownerUid || !s.isActive) continue;
+
+      bool pinMatch;
+      if (s.hasPinHash) {
+        // ── Secure path: compare against stored SHA-256 hash ──────────────
+        pinMatch = PinHashUtil.verify(
+          pin: _pin,
+          salt: s.pinSalt,
+          storedHash: s.pinHash,
+        );
+      } else {
+        // ── Legacy path: plain-text PIN (old records before hashing was added)
+        // Accept the match, then silently upgrade to hashed PIN in Firebase.
+        pinMatch = s.pin == _pin;
+        if (pinMatch) {
+          // Upgrade: write hashed version back to Firebase
+          final hashed = s.copyWith(
+            pinHash: PinHashUtil.hash(pin: _pin, salt: s.id),
+            pinSalt: s.id,
+          );
+          ref.read(staffProvider.notifier).update(hashed);
+          debugPrint('[PinLock] Upgraded staff ${s.name} to hashed PIN');
+        }
+      }
+
+      if (pinMatch) {
+        matched = s;
+        break;
+      }
+    }
+
+    if (matched != null) {
       HapticFeedback.lightImpact();
-      ref.read(sessionUserProvider.notifier).state = staff;
+      ref.read(sessionUserProvider.notifier).state = matched;
       widget.onUnlocked(false);
     } else {
       _wrongPin('Wrong PIN — try again');
@@ -118,22 +146,41 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
     final ownerUid = FirebaseAuth.instance.currentUser?.uid;
     if (ownerUid == null) return;
 
-    // Find owner's staff record to get their PIN
+    // Find owner's staff record to get their PIN / hash
     final ownerRecord = ref.read(staffProvider)
         .cast<StaffMember?>()
         .firstWhere((s) => s?.id == ownerUid, orElse: () => null);
 
-    // If owner has a PIN set, verify the entered PIN matches
     if (ownerRecord != null && ownerRecord.pin.isNotEmpty &&
         ownerRecord.pin != '0000') {
-      // Check if current entered PIN matches owner's PIN
-      if (_pin != ownerRecord.pin) {
-        if (_pin.length == 4) {
-          _wrongPin('Incorrect owner PIN');
+      bool pinMatch;
+
+      if (ownerRecord.hasPinHash) {
+        // ── Secure: verify against hash ──────────────────────────────────
+        pinMatch = PinHashUtil.verify(
+          pin: _pin,
+          salt: ownerRecord.pinSalt,
+          storedHash: ownerRecord.pinHash,
+        );
+      } else {
+        // ── Legacy: plain-text compare, then silently upgrade ────────────
+        pinMatch = _pin == ownerRecord.pin;
+        if (pinMatch) {
+          final hashed = ownerRecord.copyWith(
+            pinHash: PinHashUtil.hash(pin: _pin, salt: ownerRecord.id),
+            pinSalt: ownerRecord.id,
+          );
+          ref.read(staffProvider.notifier).update(hashed);
+          debugPrint('[PinLock] Upgraded owner to hashed PIN');
         }
+      }
+
+      if (!pinMatch) {
+        if (_pin.length == 4) _wrongPin('Incorrect owner PIN');
         return;
       }
     }
+
     // PIN matches (or owner hasn't changed default) → grant full owner access
     HapticFeedback.lightImpact();
     // sessionUser = null means OWNER → StaffGuard gives unrestricted access

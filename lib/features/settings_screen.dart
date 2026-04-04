@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
+import '../core/utils/pin_hash_util.dart';
 import 'app_logo.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
@@ -1056,8 +1057,14 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
       final e = widget.existing!;
       _name.text  = e.name;
       _phone.text = e.phone;
-      _pin.text   = e.pin;
-      _pin2.text  = e.pin;
+      // If this record already uses a hashed PIN, do NOT pre-fill the plain-text
+      // pin field — the hash is not reversible. Leave _pin and _pin2 blank so the
+      // owner must consciously re-enter a PIN to change it. If left blank on save,
+      // the existing hash is preserved unchanged.
+      if (!e.hasPinHash) {
+        _pin.text  = e.pin;
+        _pin2.text = e.pin;
+      }
       _perms.addAll(e.permissions);
     } else {
       _perms.addAll(['dashboard', 'transactions', 'customers', 'load_unload']);
@@ -1086,16 +1093,18 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
       const SizedBox(height: 12),
 
       // PIN
-      FieldLabel('4-Digit PIN *'),
+      FieldLabel(isEdit && widget.existing!.hasPinHash
+          ? '4–6 Digit PIN  (leave blank to keep existing)'
+          : '4–6 Digit PIN *'),
       Row(children: [
         Expanded(child: TextField(
           controller: _pin,
           obscureText: !_showPin,
           keyboardType: TextInputType.number,
-          maxLength: 4,
+          maxLength: 6,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
-            hintText: '••••',
+            hintText: isEdit && widget.existing!.hasPinHash ? '(unchanged)' : '••••',
             counterText: '',
             suffixIcon: IconButton(
               icon: Icon(_showPin ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
@@ -1108,9 +1117,12 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
           controller: _pin2,
           obscureText: !_showPin,
           keyboardType: TextInputType.number,
-          maxLength: 4,
+          maxLength: 6,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(hintText: 'Confirm PIN', counterText: ''),
+          decoration: InputDecoration(
+            hintText: isEdit && widget.existing!.hasPinHash ? '(unchanged)' : 'Confirm PIN',
+            counterText: '',
+          ),
         )),
       ]),
       const SizedBox(height: 16),
@@ -1155,17 +1167,58 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
       GradientButton(
         label: isEdit ? '✅ Save Changes' : '👷 Add Staff Member',
         onTap: () {
-          final name = _name.text.trim();
+          final name     = _name.text.trim();
+          final pinInput = _pin.text.trim();
+          final existing = widget.existing;
+          final isEdit   = existing != null;
+
+          // ── Validate name ────────────────────────────────────────────────
           if (name.isEmpty) { showToast(context, 'Enter staff name', error: true); return; }
-          if (_pin.text.length != 4) { showToast(context, 'PIN must be 4 digits', error: true); return; }
-          if (_pin.text != _pin2.text) { showToast(context, 'PINs do not match', error: true); return; }
+
+          // ── Validate permissions ─────────────────────────────────────────
           if (_perms.isEmpty) { showToast(context, 'Select at least one permission', error: true); return; }
 
+          // ── PIN handling ─────────────────────────────────────────────────
+          // On edit: if PIN fields are blank AND the record already has a hash,
+          // keep the existing hash/salt unchanged.
+          final keepExistingPin = isEdit && existing.hasPinHash && pinInput.isEmpty;
+
+          if (!keepExistingPin) {
+            // New staff OR owner is setting/changing the PIN
+            final pinErr = PinHashUtil.validate(pinInput);
+            if (pinErr != null) { showToast(context, pinErr, error: true); return; }
+            if (pinInput != _pin2.text) { showToast(context, 'PINs do not match', error: true); return; }
+          }
+
+          // ── Build the StaffMember ────────────────────────────────────────
+          final memberId = existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+
+          final String newPinHash;
+          final String newPinSalt;
+          final String newPin;  // kept for legacy fallback reads; set to '' after hashing
+
+          if (keepExistingPin) {
+            // Preserve existing hash — no PIN change
+            newPinHash = existing.pinHash;
+            newPinSalt = existing.pinSalt;
+            newPin     = existing.pin;  // preserve legacy field if it exists
+          } else {
+            // Hash the new PIN using the member's ID as salt
+            newPinSalt = memberId;
+            newPinHash = PinHashUtil.hash(pin: pinInput, salt: newPinSalt);
+            newPin     = '';  // clear plain-text field after hashing
+          }
+
           final member = StaffMember(
-            id: widget.existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            name: name, phone: _phone.text.trim(),
-            pin: _pin.text, permissions: List.from(_perms),
+            id:          memberId,
+            name:        name,
+            phone:       _phone.text.trim(),
+            pin:         newPin,
+            permissions: List.from(_perms),
+            pinHash:     newPinHash,
+            pinSalt:     newPinSalt,
           );
+
           if (isEdit) {
             ref.read(staffProvider.notifier).update(member);
           } else {
