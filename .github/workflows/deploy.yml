@@ -45,8 +45,9 @@ jobs:
 
       - name: Build Web
         run: |
-          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
+          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_API_KEY_ANDROID":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
             "${{ secrets.FIREBASE_API_KEY }}" \
+            "${{ secrets.FIREBASE_API_KEY_ANDROID }}" \
             "${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
             "${{ secrets.FIREBASE_DATABASE_URL }}" \
             "${{ secrets.FIREBASE_PROJECT_ID }}" \
@@ -115,8 +116,9 @@ jobs:
             echo "ERROR: FIREBASE_API_KEY is missing!"
             exit 1
           fi
-          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
+          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_API_KEY_ANDROID":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
             "${{ secrets.FIREBASE_API_KEY }}" \
+            "${{ secrets.FIREBASE_API_KEY_ANDROID }}" \
             "${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
             "${{ secrets.FIREBASE_DATABASE_URL }}" \
             "${{ secrets.FIREBASE_PROJECT_ID }}" \

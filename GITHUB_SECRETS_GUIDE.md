@@ -10,25 +10,28 @@ Go to: **Settings > Secrets and variables > Actions > New repository secret**
 1. **FIREBASE_API_KEY**
    - Value: `AIzaSyDr6JHIReYMAT-gff_OZZtU2aaAj0zt2ho`
 
-2. **FIREBASE_AUTH_DOMAIN**
+2. **FIREBASE_API_KEY_ANDROID**
+   - Value: `AIzaSyArDnXqUojZJVBUAcnW_QWIH3h57nBE6Ic`
+
+3. **FIREBASE_AUTH_DOMAIN**
    - Value: `mrwaterprov1-54c3f.firebaseapp.com`
 
-3. **FIREBASE_DATABASE_URL**
+4. **FIREBASE_DATABASE_URL**
    - Value: `https://mrwaterprov1-54c3f-default-rtdb.firebaseio.com`
 
-4. **FIREBASE_PROJECT_ID**
+5. **FIREBASE_PROJECT_ID**
    - Value: `mrwaterprov1-54c3f`
 
-5. **FIREBASE_STORAGE_BUCKET**
+6. **FIREBASE_STORAGE_BUCKET**
    - Value: `mrwaterprov1-54c3f.firebasestorage.app`
 
-6. **FIREBASE_MESSAGING_SENDER_ID**
+7. **FIREBASE_MESSAGING_SENDER_ID**
    - Value: `199429585160`
 
-7. **FIREBASE_APP_ID_WEB**
+8. **FIREBASE_APP_ID_WEB**
    - Value: `1:199429585160:web:919155f8d921ab0790d4bd`
 
-8. **FIREBASE_APP_ID_ANDROID**
+9. **FIREBASE_APP_ID_ANDROID**
    - Value: `1:199429585160:android:de08ce0929fc6f6190d4bd`
 
 ### Google Services JSON
