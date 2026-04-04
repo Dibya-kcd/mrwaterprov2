@@ -10,6 +10,35 @@ import 'package:intl/intl.dart';
 const _uuid = Uuid();
 String _now() => DateTime.now().toIso8601String();
 
+String _asString(dynamic value, {String fallback = ''}) {
+  if (value == null) return fallback;
+  final text = value.toString().trim();
+  return text.isEmpty ? fallback : text;
+}
+
+int _asInt(dynamic value, {int fallback = 0}) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString()) ?? fallback;
+}
+
+double _asDouble(dynamic value, {double fallback = 0}) {
+  if (value == null) return fallback;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? fallback;
+}
+
+bool _asBool(dynamic value, {bool fallback = false}) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  final text = value.toString().trim().toLowerCase();
+  if (text == 'true') return true;
+  if (text == 'false') return false;
+  return fallback;
+}
+
 /// Deep-cast a Firebase snapshot value to Map<String, dynamic>.
 /// Flutter Web Firebase SDK returns LinkedMap<Object?, Object?> at every level.
 /// Map<String, dynamic>.from() only converts the outer keys — nested maps and
@@ -153,8 +182,13 @@ class Customer {
   });
 
   String get initials {
-    final p = name.trim().split(' ');
-    return (p.length >= 2 ? '${p[0][0]}${p[1][0]}' : name.substring(0, name.length >= 2 ? 2 : 1)).toUpperCase();
+    final safeName = name.trim();
+    if (safeName.isEmpty) return 'CU';
+    final parts = safeName.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return safeName.substring(0, safeName.length >= 2 ? 2 : 1).toUpperCase();
   }
   bool get hasJarsOut => coolOut > 0 || petOut > 0;
   bool get hasCredit  => balance > 0;
@@ -173,15 +207,22 @@ class Customer {
   };
 
   factory Customer.fromJson(Map<String, dynamic> j) => Customer(
-    id: j['id']?.toString() ?? '', name: j['name']?.toString() ?? '', phone: j['phone']?.toString() ?? '', area: j['area'] ?? '',
-    address: j['address'] ?? '', isActive: j['isActive'] ?? true,
-    balance: (j['balance'] ?? 0.0).toDouble(),
-    coolOut: j['coolOut'] ?? 0, petOut: j['petOut'] ?? 0,
-    ownCoolJars: j['ownCoolJars'] ?? 0, ownPetJars: j['ownPetJars'] ?? 0,
-    securityDeposit: (j['securityDeposit'] ?? 0.0).toDouble(),
-    coolPriceOverride: j['coolPriceOverride']?.toDouble(),
-    petPriceOverride: j['petPriceOverride']?.toDouble(),
-    notes: j['notes'] ?? '', createdAt: j['createdAt'] ?? _now(),
+    id: _asString(j['id'], fallback: _uuid.v4()),
+    name: _asString(j['name'], fallback: 'Unnamed Customer'),
+    phone: _asString(j['phone']),
+    area: _asString(j['area']),
+    address: _asString(j['address']),
+    isActive: _asBool(j['isActive'], fallback: true),
+    balance: _asDouble(j['balance']),
+    coolOut: _asInt(j['coolOut']),
+    petOut: _asInt(j['petOut']),
+    ownCoolJars: _asInt(j['ownCoolJars']),
+    ownPetJars: _asInt(j['ownPetJars']),
+    securityDeposit: _asDouble(j['securityDeposit']),
+    coolPriceOverride: j['coolPriceOverride'] == null ? null : _asDouble(j['coolPriceOverride']),
+    petPriceOverride: j['petPriceOverride'] == null ? null : _asDouble(j['petPriceOverride']),
+    notes: _asString(j['notes']),
+    createdAt: _asString(j['createdAt'], fallback: _now()),
   );
 
   Customer copyWith({
@@ -1825,4 +1866,3 @@ final authStateProvider = StreamProvider<User?>((ref) => FirebaseAuth.instance.a
 
 // Global flag to indicate if the user has passed the PIN screen
 final pinUnlockedProvider = StateProvider<bool>((ref) => false);
-
