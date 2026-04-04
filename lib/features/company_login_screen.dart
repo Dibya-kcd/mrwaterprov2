@@ -106,6 +106,14 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       final c = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailCtrl.text.trim(), password: _pwCtrl.text);
       debugPrint('FirebaseAuth: Sign in successful for ${c.user?.email}');
+      if (!c.user!.emailVerified) {
+        await FirebaseAuth.instance.signOut();
+        setState(() {
+          _loading = false;
+          _error = 'email-not-verified';
+        });
+        return;
+      }
       CompanySession.init(c.user!.uid,
           name: c.user!.displayName ?? c.user!.email ?? '');
       await _ensureOwnerRecord(c.user!);
@@ -128,10 +136,45 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       final c = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailCtrl.text.trim(), password: _pwCtrl.text);
       await c.user!.updateDisplayName(_bizCtrl.text.trim());
-      CompanySession.init(c.user!.uid, name: _bizCtrl.text.trim());
+      await c.user!.sendEmailVerification();
       await _ensureOwnerRecord(c.user!);
-      if (mounted) _showSuccess();
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _view = _View.signIn;
+          _info = 'Account created. Verification email sent to ${c.user!.email ?? _emailCtrl.text.trim()}. Confirm your email before signing in.';
+        });
+      }
     } on FirebaseAuthException catch (e) { _fail(e.code); }
+  }
+
+  void _showForgotUsernameHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forgot username?'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            'This portal uses your registered email address as the username.',
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'If you do not remember it, check the email account you used to sign up, or open the welcome email from Firebase.',
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'If you still cannot access the portal, use the forgot password flow with the same email address, or contact support for help.',
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted, height: 1.4),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
   }
 
   Future<void> _sendReset() async {
@@ -142,7 +185,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
           email: _emailCtrl.text.trim());
       setState(() {
         _loading = false;
-        _info = 'Reset link sent to ${_emailCtrl.text.trim()}. Check your inbox.';
+        _info = 'Reset link sent to ${_emailCtrl.text.trim()}. Check your inbox and spam folder.';
       });
     } on FirebaseAuthException catch (e) { _fail(e.code); }
   }
@@ -159,6 +202,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       await doc.set({
         'id': user.uid,
         'name': user.displayName ?? user.email ?? 'Owner',
+        'email': user.email ?? '',
         'phone': user.phoneNumber ?? '',
         'pin': '',
         'pinHash': '',
@@ -278,6 +322,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
         'user-disabled'        => 'This account has been disabled.',
         'too-many-requests'    => 'Too many attempts — please wait.',
         'missing-email'        => 'Enter your email address first.',
+        'email-not-verified'   => 'Email not verified. Check your inbox for the verification email.',
         _                      => 'Something went wrong. Please try again.',
       };
     });
@@ -623,15 +668,23 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       // Forgot password — subtle link, sign in view only
       if (_view == _View.signIn) ...[
         const SizedBox(height: 14),
-        Center(
-          child: GestureDetector(
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          GestureDetector(
             onTap: () => _switchView(_View.forgotPw),
             child: Text('Forgot password?',
                 style: GoogleFonts.inter(
                     fontSize: 13, color: primary,
                     fontWeight: FontWeight.w500)),
           ),
-        ),
+          const SizedBox(width: 18),
+          GestureDetector(
+            onTap: _showForgotUsernameHelp,
+            child: Text('Forgot username?',
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: primary,
+                    fontWeight: FontWeight.w500)),
+          ),
+        ]),
       ],
 
       // Hint text for forgot pw view
