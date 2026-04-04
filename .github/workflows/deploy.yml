@@ -54,7 +54,7 @@ jobs:
             "FIREBASE_APP_ID_ANDROID": "${{ secrets.FIREBASE_APP_ID_ANDROID }}"
           }
           EOF
-          flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
+          flutter build web --release --base-href "/mrwaterprov2/" --dart-define-from-file=dart_defines.json
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
