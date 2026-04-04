@@ -133,7 +133,7 @@ class ActivityDetector extends StatelessWidget {
 // _AppGate.build() returns SplashScreen directly. When we're done with
 // splash, we just setState(_screen = ...) — no Navigator involved at all.
 // ══════════════════════════════════════════════════════════════════════════════
-enum _Screen { splash, pin, adminPortal, adminPanel, app }
+enum _Screen { splash, pin, adminPortal, ownerPinVerify, adminPanel, app }
 
 class _AppGate extends ConsumerStatefulWidget {
   const _AppGate();
@@ -237,6 +237,16 @@ class _AppGateState extends ConsumerState<_AppGate> {
   void _onAdminAuthenticated({required bool goDirectly}) {
     if (!mounted) return;
     if (goDirectly) {
+      _goto(_Screen.ownerPinVerify);
+    } else {
+      _goto(_Screen.pin);
+    }
+  }
+
+  // ── Owner PIN verified ──────────────────────────────────────────────────
+  void _onOwnerPinVerified(bool isOwner) {
+    if (!mounted) return;
+    if (isOwner) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) _initOwnerSession(user);
       ref.read(sessionUserProvider.notifier).state = null;
@@ -246,6 +256,10 @@ class _AppGateState extends ConsumerState<_AppGate> {
       SessionManager.instance.persistUnlocked();
       _goto(_Screen.adminPanel);
     } else {
+      // Not owner PIN, show error and go back to PIN
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid owner PIN. Access denied.')),
+      );
       _goto(_Screen.pin);
     }
   }
@@ -319,10 +333,18 @@ class _AppGateState extends ConsumerState<_AppGate> {
             onBack: () => _goto(_Screen.pin),
           ),
 
+        // Owner PIN verification
+        _Screen.ownerPinVerify => PinLockScreen(
+            key: const ValueKey('owner_pin_verify'),
+            onUnlocked: _onOwnerPinVerified,
+            onOpenAdminPortal: null, // Disable hidden portal here
+          ),
+
         // Owner admin panel
         _Screen.adminPanel => AdminPanelScreen(
             key: const ValueKey('admin_panel'),
             onBack: () => _goto(_Screen.app),
+            onSignOut: () => _goto(_Screen.pin),
           ),
 
         // Main app

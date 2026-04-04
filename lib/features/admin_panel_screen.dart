@@ -9,7 +9,8 @@ import '../features/settings_screen.dart';
 
 class AdminPanelScreen extends ConsumerWidget {
   final VoidCallback? onBack;
-  const AdminPanelScreen({super.key, this.onBack});
+  final VoidCallback? onSignOut;
+  const AdminPanelScreen({super.key, this.onBack, this.onSignOut});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -110,7 +111,11 @@ class AdminPanelScreen extends ConsumerWidget {
     await SessionManager.instance.lock(ref);
     ref.read(pinUnlockedProvider.notifier).state = false;
     await CompanySession.firebaseSignOut();
-    if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    if (onSignOut != null) {
+      onSignOut!();
+    } else if (context.mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 }
 
