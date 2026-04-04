@@ -6,7 +6,7 @@
 import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'firebase_config.dart';
-import '../../features/company_login_screen.dart';
+import 'company_session.dart';
 
 // ── Deep-cast helper ──────────────────────────────────────────────────────────
 // Flutter Web Firebase returns LinkedMap<Object?, Object?> instead of

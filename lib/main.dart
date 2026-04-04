@@ -10,9 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/app_state.dart';
+import 'core/services/company_session.dart';
 import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
 import 'core/theme/app_theme.dart';
+import 'features/admin_panel_screen.dart';
 import 'features/company_login_screen.dart';
 import 'features/main_scaffold.dart';
 import 'features/pin_lock_screen.dart';
@@ -131,7 +133,7 @@ class ActivityDetector extends StatelessWidget {
 // _AppGate.build() returns SplashScreen directly. When we're done with
 // splash, we just setState(_screen = ...) — no Navigator involved at all.
 // ══════════════════════════════════════════════════════════════════════════════
-enum _Screen { splash, pin, adminPortal, app }
+enum _Screen { splash, pin, adminPortal, adminPanel, app }
 
 class _AppGate extends ConsumerStatefulWidget {
   const _AppGate();
@@ -181,6 +183,7 @@ class _AppGateState extends ConsumerState<_AppGate> {
     final minSplash = Future.delayed(const Duration(seconds: 3));
 
     // Wait for BOTH: auth resolved AND splash finished
+    final validSession = await SessionManager.instance.isSessionStillValid();
     final results = await Future.wait([
       authFuture,
       Future.any([_splashCompleter.future, Future.delayed(const Duration(seconds: 6))]),
@@ -194,7 +197,13 @@ class _AppGateState extends ConsumerState<_AppGate> {
 
     if (user != null) {
       _initOwnerSession(user);
-      _goto(_Screen.app);
+      if (validSession) {
+        ref.read(pinUnlockedProvider.notifier).state = true;
+        SessionManager.instance.startWatching(ref);
+        _goto(_Screen.app);
+      } else {
+        _goto(_Screen.pin);
+      }
     } else {
       _goto(_Screen.pin);
     }
@@ -235,7 +244,7 @@ class _AppGateState extends ConsumerState<_AppGate> {
       // Start inactivity watchdog
       SessionManager.instance.startWatching(ref);
       SessionManager.instance.persistUnlocked();
-      _goto(_Screen.app);
+      _goto(_Screen.adminPanel);
     } else {
       _goto(_Screen.pin);
     }
@@ -308,6 +317,12 @@ class _AppGateState extends ConsumerState<_AppGate> {
             key: const ValueKey('admin'),
             onAuthenticated: _onAdminAuthenticated,
             onBack: () => _goto(_Screen.pin),
+          ),
+
+        // Owner admin panel
+        _Screen.adminPanel => AdminPanelScreen(
+            key: const ValueKey('admin_panel'),
+            onBack: () => _goto(_Screen.app),
           ),
 
         // Main app

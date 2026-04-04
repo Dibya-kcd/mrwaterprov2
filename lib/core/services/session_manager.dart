@@ -32,14 +32,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_state.dart';
+import 'local_storage_service.dart';
 
 /// How long of inactivity before the app auto-locks (PIN screen shown again).
 const kInactivityTimeout = Duration(minutes: 5);
 
 /// shared_preferences key for the last-unlocked timestamp.
-const _kSessionKey = 'pin_session_unlocked_at';
 
 class SessionManager {
   SessionManager._();
@@ -98,15 +97,14 @@ class SessionManager {
     debugPrint('[SessionManager] App locked');
   }
 
-  /// Write the current timestamp to shared_preferences.
+  /// Write the current timestamp to secure storage.
   /// Called right after a successful PIN unlock so warm resumes within the
   /// inactivity window can skip the PIN screen.
   Future<void> persistUnlocked() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kSessionKey, DateTime.now().toIso8601String());
+      await LocalStorageService.instance.savePinSessionUnlocked(DateTime.now());
     } catch (e) {
-      debugPrint('[SessionManager] prefs write error: $e');
+      debugPrint('[SessionManager] secure storage write error: $e');
     }
   }
 
@@ -115,24 +113,20 @@ class SessionManager {
   /// Always returns false on cold start because prefs are cleared on lock.
   Future<bool> isSessionStillValid() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final val   = prefs.getString(_kSessionKey);
-      if (val == null) return false;
-      final saved = DateTime.tryParse(val);
+      final saved = await LocalStorageService.instance.loadPinSessionUnlocked();
       if (saved == null) return false;
       return DateTime.now().difference(saved) < kInactivityTimeout;
     } catch (e) {
-      debugPrint('[SessionManager] prefs read error: $e');
+      debugPrint('[SessionManager] secure storage read error: $e');
       return false;
     }
   }
 
   Future<void> _clearStorageFlag() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_kSessionKey);
+      await LocalStorageService.instance.clearPinSession();
     } catch (e) {
-      debugPrint('[SessionManager] prefs delete error: $e');
+      debugPrint('[SessionManager] secure storage delete error: $e');
     }
   }
 }

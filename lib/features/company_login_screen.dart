@@ -1,8 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/services/company_session.dart';
 import '../core/theme/app_colors.dart';
+import '../core/utils/pin_hash_util.dart';
 import 'mr_water_logo.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -18,30 +21,6 @@ import 'mr_water_logo.dart';
 //   • "Not you? Sign out" in success sheet → Firebase sign-out (with confirm)
 //   • Inside-app logout clears ROLE session only, not Firebase
 // ══════════════════════════════════════════════════════════════════════════════
-
-// ── Global company session ────────────────────────────────────────────────────
-class CompanySession {
-  static String? _companyId;
-  static String? _companyName;
-
-  // Safe getter — returns empty string instead of crashing before init
-  // FirebaseService checks isEmpty before making any DB calls
-  static String get companyId   => _companyId ?? '';
-  static String get companyName => _companyName ?? '';
-  static bool   get isLoggedIn  => _companyId != null && _companyId!.isNotEmpty;
-
-  static void init(String uid, {String? name}) {
-    _companyId   = uid;
-    _companyName = name;
-  }
-
-  /// Full Firebase sign-out — only from admin portal
-  static Future<void> firebaseSignOut() async {
-    await FirebaseAuth.instance.signOut();
-    _companyId   = null;
-    _companyName = null;
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 enum _View { signIn, signUp, forgotPw }
@@ -129,6 +108,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       debugPrint('FirebaseAuth: Sign in successful for ${c.user?.email}');
       CompanySession.init(c.user!.uid,
           name: c.user!.displayName ?? c.user!.email ?? '');
+      await _ensureOwnerRecord(c.user!);
       if (mounted) _showSuccess();
     } on FirebaseAuthException catch (e) { 
       debugPrint('FirebaseAuth error (code: ${e.code}): ${e.message}');
@@ -149,6 +129,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
           email: _emailCtrl.text.trim(), password: _pwCtrl.text);
       await c.user!.updateDisplayName(_bizCtrl.text.trim());
       CompanySession.init(c.user!.uid, name: _bizCtrl.text.trim());
+      await _ensureOwnerRecord(c.user!);
       if (mounted) _showSuccess();
     } on FirebaseAuthException catch (e) { _fail(e.code); }
   }
@@ -164,6 +145,122 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
         _info = 'Reset link sent to ${_emailCtrl.text.trim()}. Check your inbox.';
       });
     } on FirebaseAuthException catch (e) { _fail(e.code); }
+  }
+
+  Future<void> _ensureOwnerRecord(User user) async {
+    final doc = FirebaseFirestore.instance
+        .collection('companies')
+        .doc(user.uid)
+        .collection('users')
+        .doc(user.uid);
+
+    final snapshot = await doc.get();
+    if (!snapshot.exists) {
+      await doc.set({
+        'id': user.uid,
+        'name': user.displayName ?? user.email ?? 'Owner',
+        'phone': user.phoneNumber ?? '',
+        'pin': '',
+        'pinHash': '',
+        'pinSalt': user.uid,
+        'role': 'OWNER',
+        'isActive': true,
+        'permissions': [
+          'dashboard', 'transactions', 'customers', 'inventory',
+          'load_unload', 'payments', 'reports', 'notifications',
+          'settings', 'expenses', 'smart_entry',
+        ],
+      });
+      await _promptOwnerPinSetup(user);
+      return;
+    }
+
+    final data = snapshot.data();
+    final hasPin = (data?['pinHash'] as String?)?.isNotEmpty ?? false;
+    if (!hasPin) {
+      await _promptOwnerPinSetup(user);
+    }
+  }
+
+  Future<void> _promptOwnerPinSetup(User user) async {
+    final pinCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    String? formError;
+
+    final created = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Create Owner PIN'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(
+              'Create a 4–6 digit PIN to unlock the app on shared devices.\nDo not share this PIN.',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: pinCtrl,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Owner PIN', counterText: ''),
+              maxLength: 6,
+            ),
+            TextField(
+              controller: confirmCtrl,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Confirm PIN', counterText: ''),
+              maxLength: 6,
+            ),
+            if (formError != null) ...[
+              const SizedBox(height: 12),
+              Text(formError!, style: TextStyle(color: AppColors.dangerColor(false), fontSize: 13)),
+            ],
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                final pin = pinCtrl.text.trim();
+                final confirm = confirmCtrl.text.trim();
+                final validation = PinHashUtil.validate(pin);
+                if (validation != null) {
+                  setState(() => formError = validation);
+                  return;
+                }
+                if (pin != confirm) {
+                  setState(() => formError = 'PINs must match.');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Save PIN'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (created == true && pinCtrl.text.trim().isNotEmpty) {
+      final pin = pinCtrl.text.trim();
+      final hash = PinHashUtil.hash(pin: pin, salt: user.uid);
+      await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(user.uid)
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'pin': '',
+        'pinHash': hash,
+        'pinSalt': user.uid,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Owner PIN created successfully. Use the PIN screen next time.')),
+        );
+      }
+    }
   }
 
   void _fail(String code) {
@@ -275,11 +372,11 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
                       fontSize: 13, color: AppColors.inkMuted)),
               const SizedBox(height: 22),
 
-              // ── Enter App (owner bypass) ──
+              // ── Open Admin Panel (owner access) ──
               SizedBox(width: double.infinity, height: 50,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.rocket_launch_rounded, size: 17),
-                  label: Text('Enter App', style: GoogleFonts.inter(
+                  icon: const Icon(Icons.admin_panel_settings_rounded, size: 17),
+                  label: Text('Open Admin Panel', style: GoogleFonts.inter(
                       fontSize: 15, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary, foregroundColor: Colors.white,

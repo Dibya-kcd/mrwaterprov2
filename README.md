@@ -95,6 +95,43 @@ dart pub global activate flutterfire_cli
 flutterfire configure
 ```
 
+The app now uses Firestore for authentication and PIN storage under:
+
+- `companies/{companyId}/users/{uid}`
+- User fields: `uid`, `name`, `role`, `pinHash`, `pinSalt`, `active`, `permissions`
+
+Example owner document:
+
+```json
+{
+  "uid": "owner-uid",
+  "name": "Owner Name",
+  "role": "OWNER",
+  "pinHash": "<sha256 hash>",
+  "pinSalt": "owner-uid",
+  "active": true,
+  "permissions": [
+    "dashboard","transactions","customers","inventory",
+    "load_unload","payments","reports","notifications",
+    "settings","expenses","smart_entry"
+  ]
+}
+```
+
+Example staff document:
+
+```json
+{
+  "uid": "staff-uid",
+  "name": "Staff Name",
+  "role": "STAFF",
+  "pinHash": "<sha256 hash>",
+  "pinSalt": "staff-uid",
+  "active": true,
+  "permissions": ["dashboard","transactions","customers"]
+}
+```
+
 Then replace in-memory state in `app_state.dart` with Firestore streams.
 
 ## 📋 Dependencies

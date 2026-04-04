@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/user_role.dart';
+import '../services/company_session.dart';
+import '../services/firestore_user_datasource.dart';
 import '../services/firebase_service.dart';
 import '../services/firebase_config.dart';
 import 'package:uuid/uuid.dart';
@@ -1783,12 +1786,15 @@ final dayLogProvider = StateNotifierProvider<DayLogNotifier, List<DayLog>>(
 // ══════════════════════════════════════════════════════════════════════════════
 
 class StaffMember {
-  final String id, name, phone, pin;
+  final String id;
+  final String name;
+  final String phone;
+  final String pin;
   final bool isActive;
-  // permissions: 'transactions' | 'customers' | 'load_unload'
   final List<String> permissions;
+  final UserRole role;
 
-  /// SHA-256 hash of the PIN (salt:pin). Stored in Firebase — never plain text.
+  /// SHA-256 hash of the PIN (salt:pin). Stored in Firestore — never plain text.
   /// Empty string means PIN has NOT been hashed yet (legacy plain-text pin field).
   final String pinHash;
 
@@ -1797,48 +1803,69 @@ class StaffMember {
   final String pinSalt;
 
   const StaffMember({
-    required this.id, required this.name, required this.phone,
-    required this.pin, this.isActive = true,
-    this.permissions = const ['dashboard','transactions','customers','inventory','load_unload','payments','notifications'],
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.pin,
+    this.isActive = true,
+    this.permissions = const [
+      'dashboard','transactions','customers','inventory','load_unload',
+      'payments','notifications','reports','settings','expenses','smart_entry',
+    ],
+    this.role = UserRole.staff,
     this.pinHash = '',
     this.pinSalt = '',
   });
 
   bool can(String perm) => permissions.contains(perm);
 
-  /// True if this record already uses hashed PIN storage.
   bool get hasPinHash => pinHash.isNotEmpty && pinSalt.isNotEmpty;
-
-  // ── Owner check: null sessionUser = owner = full access ───────────────────
-  // This is only used for staff members. Owner always has sessionUser = null.
-  // If a StaffMember IS the owner (matched by Firebase UID), they should still
-  // use the null-session path, not this permission list.
+  bool get isOwner => role == UserRole.owner;
 
   StaffMember copyWith({
-    String? name, String? phone, String? pin,
-    bool? isActive, List<String>? permissions,
-    String? pinHash, String? pinSalt,
+    String? name,
+    String? phone,
+    String? pin,
+    bool? isActive,
+    List<String>? permissions,
+    UserRole? role,
+    String? pinHash,
+    String? pinSalt,
   }) => StaffMember(
-    id: id, name: name ?? this.name, phone: phone ?? this.phone,
-    pin: pin ?? this.pin, isActive: isActive ?? this.isActive,
+    id: id,
+    name: name ?? this.name,
+    phone: phone ?? this.phone,
+    pin: pin ?? this.pin,
+    isActive: isActive ?? this.isActive,
     permissions: permissions ?? this.permissions,
+    role: role ?? this.role,
     pinHash: pinHash ?? this.pinHash,
     pinSalt: pinSalt ?? this.pinSalt,
   );
 
   Map<String, dynamic> toJson() => {
-    'id': id, 'name': name, 'phone': phone,
-    'pin': pin, 'isActive': isActive, 'permissions': permissions,
-    'pinHash': pinHash, 'pinSalt': pinSalt,
+    'id': id,
+    'name': name,
+    'phone': phone,
+    'pin': pin,
+    'isActive': isActive,
+    'permissions': permissions,
+    'role': role.value,
+    'pinHash': pinHash,
+    'pinSalt': pinSalt,
   };
 
   factory StaffMember.fromJson(Map<String, dynamic> j) => StaffMember(
-    id:       _asString(j['id'],   fallback: _uuid.v4()),
-    name:     _asString(j['name'], fallback: 'Staff'),
-    phone:    _asString(j['phone']),
-    pin:      _asString(j['pin']),
+    id: _asString(j['id'], fallback: _uuid.v4()),
+    name: _asString(j['name'], fallback: 'Staff'),
+    phone: _asString(j['phone']),
+    pin: _asString(j['pin']),
     isActive: _asBool(j['isActive'], fallback: true),
-    permissions: List<String>.from(j['permissions'] ?? ['dashboard','transactions','customers','inventory','load_unload','payments','notifications']),
+    permissions: List<String>.from(j['permissions'] ?? [
+      'dashboard','transactions','customers','inventory','load_unload',
+      'payments','notifications','reports','settings','expenses','smart_entry',
+    ]),
+    role: UserRoleX.fromString(_asString(j['role'], fallback: 'STAFF')),
     pinHash: _asString(j['pinHash']),
     pinSalt: _asString(j['pinSalt']),
   );
@@ -1851,41 +1878,42 @@ class StaffNotifier extends StateNotifier<List<StaffMember>> {
 
   void _init() {
     _sub?.cancel();
-    final stream = FirebaseService.instance.watch(FirebaseConfig.nodeStaff);
-    // Stream.empty() is returned when CompanySession not yet init'd.
-    // In that case subscribe completes immediately — we need reinit() later.
-    _sub = stream.listen((data) {
+    if (CompanySession.companyId.isEmpty) {
+      state = [];
+      return;
+    }
+
+    _sub = FirestoreUserDataSource.instance
+        .watchUsers(CompanySession.companyId)
+        .listen((documents) {
       if (!mounted) return;
-      if (data != null) {
-        state = data.values
-            .map((e) => StaffMember.fromJson(_castMap(e)))
-            .toList();
-      } else {
-        state = [];
-      }
+      state = documents.map((e) => StaffMember.fromJson(_castMap(e))).toList();
     });
   }
 
-  /// Call this after CompanySession.init() to re-subscribe to Firebase.
-  /// Required because the initial subscription fires on Stream.empty()
-  /// when CompanySession wasn't ready at provider construction time.
   void reinit() => _init();
 
   Future<void> add(StaffMember s) async {
-    await FirebaseService.instance.setChild(FirebaseConfig.nodeStaff, s.id, s.toJson());
+    await FirestoreUserDataSource.instance.setUser(
+        CompanySession.companyId, s.id, s.toJson());
   }
 
   Future<void> update(StaffMember s) async {
-    await FirebaseService.instance.update('${FirebaseConfig.nodeStaff}/${s.id}', s.toJson());
+    await FirestoreUserDataSource.instance.updateUser(
+        CompanySession.companyId, s.id, s.toJson());
   }
 
   Future<void> remove(String id) async {
-    await FirebaseService.instance.removeChild(FirebaseConfig.nodeStaff, id);
+    await FirestoreUserDataSource.instance.deleteUser(
+        CompanySession.companyId, id);
   }
 
   StaffMember? byPin(String pin) {
-    try { return state.firstWhere((s) => s.pin == pin && s.isActive); }
-    catch (_) { return null; }
+    try {
+      return state.firstWhere((s) => s.pin == pin && s.isActive);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

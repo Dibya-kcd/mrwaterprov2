@@ -82,7 +82,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _Section(
           id: 'staff', title: '👷 Staff Access', expanded: _expanded == 'staff',
           onToggle: () => setState(() => _expanded = _expanded == 'staff' ? null : 'staff'),
-          child: const _StaffForm(),
+          child: ref.watch(sessionUserProvider) == null
+              ? const _StaffForm()
+              : const _StaffAccessReadOnly(),
         ),
 
         // ── Firebase Diagnostics ──────────────────────────────────────────────
@@ -888,6 +890,67 @@ class _StaffForm extends ConsumerWidget {
         )
       else
         ...staff.map((s) => _StaffCard(member: s, isDark: isDark)),
+    ]);
+  }
+}
+
+class _StaffAccessReadOnly extends ConsumerWidget {
+  const _StaffAccessReadOnly();
+
+  static const _permLabels = {
+    'dashboard':      '🏠 Dashboard',
+    'transactions':   '🚚 Transactions',
+    'customers':      '👤 Customers',
+    'inventory':      '📦 Inventory',
+    'load_unload':    '🔄 Load/Unload',
+    'payments':       '💳 Payments',
+    'reports':        '📊 Reports',
+    'notifications':  '🔔 Notifications',
+    'expenses':       '💸 Expenses',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final staff = ref.watch(sessionUserProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = Theme.of(context).colorScheme.primary;
+    final perms = staff?.permissions ?? [];
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: primary.withValues(alpha: 0.16)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Your access is read-only.', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: primary)),
+          const SizedBox(height: 6),
+          Text(
+            'Only the owner can add staff or change screen permissions. You can log out to return to the PIN entry screen.',
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted, height: 1.4),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 18),
+      Text('Allowed screens', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 10),
+      if (perms.isEmpty)
+        Text('No screens are enabled for your account. Ask the owner to grant access.',
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted, height: 1.4))
+      else
+        Wrap(spacing: 8, runSpacing: 8, children: perms.map((perm) {
+          return Chip(
+            label: Text(_permLabels[perm] ?? perm, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+            backgroundColor: isDark ? AppColors.surface2Dark : AppColors.surface2,
+          );
+        }).toList()),
+      const SizedBox(height: 18),
+      Text('Need a change?', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 6),
+      Text('The owner must sign in using the hidden admin portal and update staff permissions from Settings.',
+          style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted, height: 1.4)),
     ]);
   }
 }
