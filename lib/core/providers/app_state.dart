@@ -173,7 +173,7 @@ class Customer {
   };
 
   factory Customer.fromJson(Map<String, dynamic> j) => Customer(
-    id: j['id'], name: j['name'], phone: j['phone'], area: j['area'] ?? '',
+    id: j['id']?.toString() ?? '', name: j['name']?.toString() ?? '', phone: j['phone']?.toString() ?? '', area: j['area'] ?? '',
     address: j['address'] ?? '', isActive: j['isActive'] ?? true,
     balance: (j['balance'] ?? 0.0).toDouble(),
     coolOut: j['coolOut'] ?? 0, petOut: j['petOut'] ?? 0,
@@ -972,7 +972,12 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
   void _init() {
     FirebaseService.instance.watch(FirebaseConfig.nodeCustomers).listen((data) {
       if (data != null) {
-        state = data.values.map((e) => Customer.fromJson(_castMap(e))).toList();
+        final customers = <Customer>[];
+        for (final entry in data.values) {
+          try { customers.add(Customer.fromJson(_castMap(entry))); }
+          catch (e) { debugPrint('[CustomersNotifier] parse error: $e'); }
+        }
+        state = customers;
       } else {
         state = [];
       }
