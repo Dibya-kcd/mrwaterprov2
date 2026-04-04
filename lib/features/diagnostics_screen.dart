@@ -338,7 +338,7 @@ class _SummaryBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
-            Icon(Icons.storage_rounded, size: 13, color: AppColors.inkMuted),
+            const Icon(Icons.storage_rounded, size: 13, color: AppColors.inkMuted),
             const SizedBox(width: 6),
             Expanded(child: Text(
               '${FirebaseConfig.projectId} · ${FirebaseConfig.databaseUrl}',
@@ -348,7 +348,7 @@ class _SummaryBar extends StatelessWidget {
             GestureDetector(
               onTap: () => Clipboard.setData(
                   ClipboardData(text: FirebaseConfig.databaseUrl)),
-              child: Icon(Icons.copy_rounded, size: 13, color: AppColors.inkMuted),
+              child: const Icon(Icons.copy_rounded, size: 13, color: AppColors.inkMuted),
             ),
           ]),
         ),
@@ -482,7 +482,7 @@ class _NodeCard extends StatelessWidget {
                 child: result.running
                     ? SizedBox(width: 14, height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2, color: warnC))
-                    : Icon(Icons.refresh_rounded, size: 14, color: AppColors.inkMuted),
+                    : const Icon(Icons.refresh_rounded, size: 14, color: AppColors.inkMuted),
               ),
             ),
           ]),

@@ -413,7 +413,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
     );
     if (ok && mounted) {
       ref.read(transactionsProvider.notifier).delete(txn);
-      if (mounted) {
+      if (context.mounted) {
         showToast(context, 'Expense deleted', error: true);
       }
     }
@@ -856,7 +856,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
       const SizedBox(height: 20),
 
       // ── Expense type (type or pick from list) ──────────────────────────────
-      FieldLabel('Expenses Type *'),
+      const FieldLabel('Expenses Type *'),
       const SizedBox(height: 6),
       TextFormField(
         controller: _typeCtrl,
@@ -952,7 +952,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
       const SizedBox(height: 16),
 
       // ── Amount ─────────────────────────────────────────────────────────────
-      FieldLabel('Amount Spent *'),
+      const FieldLabel('Amount Spent *'),
       TextFormField(
         controller: _amtCtrl,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -974,7 +974,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
       const SizedBox(height: 16),
 
       // ── Select Person (staff) ──────────────────────────────────────────────
-      FieldLabel('Select Person'),
+      const FieldLabel('Select Person'),
       const SizedBox(height: 6),
       _StaffDropdown(
         staff: allStaff,
@@ -1205,7 +1205,7 @@ class _StaffDropdown extends StatelessWidget {
                       : AppColors.inkMuted),
             ),
           ),
-          Icon(Icons.keyboard_arrow_down_rounded,
+          const Icon(Icons.keyboard_arrow_down_rounded,
               size: 18, color: AppColors.inkMuted),
         ]),
       ),

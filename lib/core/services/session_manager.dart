@@ -3,8 +3,9 @@
 //
 // Centralised app-session controller. Responsible for:
 //   1. Inactivity auto-lock (5 min by default, configurable)
-//   2. Persisting "was unlocked" flag in flutter_secure_storage so a
-//      hot-restart does NOT skip the PIN screen
+//   2. Persisting "was unlocked" timestamp in shared_preferences so a
+//      foreground/background cycle does NOT re-show the PIN screen within
+//      the inactivity window. Cold starts (process kill) always show PIN.
 //   3. Recording the last activity timestamp
 //   4. Providing a single lock() entry point used by logout, timeout,
 //      and manual lock
@@ -15,41 +16,43 @@
 //   These two are INDEPENDENT. Locking the app does NOT sign out Firebase.
 //   Only CompanyLoginScreen._confirmFirebaseSignOut() does a real sign-out.
 //
+// NOTE ON STORAGE:
+//   Uses shared_preferences (already a project dependency) instead of
+//   flutter_secure_storage to avoid adding a new package dependency.
+//   The session flag stores only a timestamp — no secrets are persisted here.
+//   PIN hashes live in Firebase (app_state.dart / StaffMember.pinHash).
+//
 // USAGE (in _AppGate / any widget):
-//   SessionManager.instance.recordActivity();   // call on every user tap
-//   SessionManager.instance.lock(ref);          // force-lock immediately
-//   SessionManager.instance.startWatching(ref); // start timeout loop
-//   SessionManager.instance.stopWatching();     // clean up on app dispose
+//   SessionManager.instance.recordActivity();    // call on every user tap
+//   SessionManager.instance.lock(ref);           // force-lock immediately
+//   SessionManager.instance.startWatching(ref);  // start timeout loop
+//   SessionManager.instance.stopWatching();      // clean up on dispose
 // ════════════════════════════════════════════════════════════════════════════
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'app_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../providers/app_state.dart';
 
 /// How long of inactivity before the app auto-locks (PIN screen shown again).
 const kInactivityTimeout = Duration(minutes: 5);
 
-/// flutter_secure_storage key for the "pin was unlocked" session flag.
-const _kSessionKey = 'pin_session_unlocked';
+/// shared_preferences key for the last-unlocked timestamp.
+const _kSessionKey = 'pin_session_unlocked_at';
 
 class SessionManager {
   SessionManager._();
   static final SessionManager instance = SessionManager._();
 
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
-
-  DateTime _lastActivity = DateTime.now();
-  Timer?   _timer;
+  DateTime   _lastActivity = DateTime.now();
+  Timer?     _timer;
   WidgetRef? _ref;
 
   // ── Activity tracking ─────────────────────────────────────────────────────
 
-  /// Call this on every meaningful user interaction (tap, scroll, type, etc.).
-  /// The easiest way: wrap MaterialApp with a GestureDetector in main.dart.
+  /// Call this on every meaningful user interaction (tap, scroll, etc.).
+  /// Wired up via the ActivityDetector Listener wrapper in main.dart.
   void recordActivity() => _lastActivity = DateTime.now();
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -59,12 +62,12 @@ class SessionManager {
     _ref = ref;
     _timer?.cancel();
     _lastActivity = DateTime.now();
-    // Check every 30 s — lightweight enough, fast enough to catch 5-min window
+    // Poll every 30 s — lightweight, fast enough to catch a 5-min window.
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => _check());
     debugPrint('[SessionManager] Inactivity watchdog started');
   }
 
-  /// Stop the watchdog. Call when app is disposed or user is locked out.
+  /// Stop the watchdog. Call when the app is disposed or the user is locked.
   void stopWatching() {
     _timer?.cancel();
     _timer = null;
@@ -84,8 +87,8 @@ class SessionManager {
 
   /// Lock the app immediately:
   ///   • Clears the Riverpod PIN-unlocked flag → _AppGate shows PinLockScreen
-  ///   • Clears the secure-storage session flag
-  ///   • Clears the staff session (back to no-one logged in)
+  ///   • Clears the shared_preferences session timestamp
+  ///   • Clears the staff session (reverts to no role logged in)
   ///   • Stops the inactivity watchdog
   Future<void> lock(WidgetRef ref) async {
     stopWatching();
@@ -95,39 +98,41 @@ class SessionManager {
     debugPrint('[SessionManager] App locked');
   }
 
-  /// Persist the "unlocked" flag so a foreground/background cycle doesn't
-  /// treat the session as lost. On a COLD START (process kill) the flag is
-  /// intentionally NOT read — we always force PIN on cold start.
+  /// Write the current timestamp to shared_preferences.
+  /// Called right after a successful PIN unlock so warm resumes within the
+  /// inactivity window can skip the PIN screen.
   Future<void> persistUnlocked() async {
     try {
-      await _storage.write(
-          key: _kSessionKey,
-          value: DateTime.now().toIso8601String());
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kSessionKey, DateTime.now().toIso8601String());
     } catch (e) {
-      debugPrint('[SessionManager] secure_storage write error: $e');
+      debugPrint('[SessionManager] prefs write error: $e');
     }
   }
 
-  /// Returns true if a recent secure-storage flag exists AND it is within
-  /// the inactivity window. Used by _AppGate on warm resume (not cold start).
+  /// Returns true if the persisted timestamp is within the inactivity window.
+  /// Used by _AppGate on warm resume (app brought to foreground).
+  /// Always returns false on cold start because prefs are cleared on lock.
   Future<bool> isSessionStillValid() async {
     try {
-      final val = await _storage.read(key: _kSessionKey);
+      final prefs = await SharedPreferences.getInstance();
+      final val   = prefs.getString(_kSessionKey);
       if (val == null) return false;
       final saved = DateTime.tryParse(val);
       if (saved == null) return false;
       return DateTime.now().difference(saved) < kInactivityTimeout;
     } catch (e) {
-      debugPrint('[SessionManager] secure_storage read error: $e');
+      debugPrint('[SessionManager] prefs read error: $e');
       return false;
     }
   }
 
   Future<void> _clearStorageFlag() async {
     try {
-      await _storage.delete(key: _kSessionKey);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSessionKey);
     } catch (e) {
-      debugPrint('[SessionManager] secure_storage delete error: $e');
+      debugPrint('[SessionManager] prefs delete error: $e');
     }
   }
 }

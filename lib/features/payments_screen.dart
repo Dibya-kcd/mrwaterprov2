@@ -724,9 +724,6 @@ class _MonthAccordion extends StatelessWidget {
 
     final totalBilled = txns.fold(0.0, (s, t) => s + t.billedAmount);
     final totalPaid   = txns.fold(0.0, (s, t) => s + t.amountCollected);
-    final paymentsAmt = txns
-        .where((t) => t.amountCollected > 0 && t.billedAmount == 0)
-        .fold(0.0, (s, t) => s + t.amountCollected);
 
     String billingDate = '';
     if (deliveries.isNotEmpty) {
@@ -832,23 +829,17 @@ class _MonthAccordion extends StatelessWidget {
 
               // Past due
               if (totalBilled > totalPaid)
-                _AmtRow('Past Month Due Amount',
+                _amtRow('Past Month Due Amount',
                     totalBilled - totalPaid, dangerC, isDark),
-
-              // Total paid in month
-              _AmtRow('Total Month Paid Amount',
-                  paymentsAmt, okC, isDark),
-
-              const SizedBox(height: 4),
-              Divider(
+              const SizedBox(height: 6),
+              _amtRow('Total Month Paid Amount',
+                  totalPaid, okC, isDark),
+              const SizedBox(height: 8),
+              Container(
                   height: 1,
-                  color: isDark
-                      ? AppColors.separatorDark
-                      : AppColors.separator),
-              const SizedBox(height: 4),
-
-              // Grand total
-              _AmtRow('Total Amount', totalBilled, primary, isDark,
+                  color: isDark ? Colors.white12 : Colors.black12,
+                  margin: const EdgeInsets.symmetric(vertical: 4)),
+              _amtRow('Total Amount', totalBilled, primary, isDark,
                   bold: true),
             ]),
           ),
@@ -989,7 +980,7 @@ class _LD {
 }
 
 // ── Amount row ────────────────────────────────────────────────────────────────
-Widget _AmtRow(String label, double amount, Color color, bool isDark,
+Widget _amtRow(String label, double amount, Color color, bool isDark,
     {bool bold = false}) =>
     Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -1079,7 +1070,7 @@ class _PaymentFormState extends ConsumerState<_PaymentForm> {
       ),
       const SizedBox(height: 20),
 
-      FieldLabel('Amount *'),
+      const FieldLabel('Amount *'),
       TextFormField(
         controller: _amt,
         keyboardType: TextInputType.number,
@@ -1091,14 +1082,14 @@ class _PaymentFormState extends ConsumerState<_PaymentForm> {
       const SizedBox(height: 16),
 
       if (widget.type != 'advance') ...[
-        FieldLabel('Payment Mode'),
+        const FieldLabel('Payment Mode'),
         PaymentModePicker(
             selected: _mode,
             onSelect: (m) => setState(() => _mode = m)),
         const SizedBox(height: 16),
       ],
 
-      FieldLabel('Note (optional)'),
+      const FieldLabel('Note (optional)'),
       TextFormField(
         controller: _note,
         decoration: const InputDecoration(

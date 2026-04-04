@@ -25,7 +25,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return SingleChildScrollView(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ScreenHeader(title: 'Settings', subtitle: 'Configure your business app'),
+        const ScreenHeader(title: 'Settings', subtitle: 'Configure your business app'),
         const SizedBox(height: 4),
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child:
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -89,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _Section(
           id: 'diagnostics', title: '🔬 Firebase Diagnostics', expanded: _expanded == 'diagnostics',
           onToggle: () => setState(() => _expanded = _expanded == 'diagnostics' ? null : 'diagnostics'),
-          child: _DiagnosticsLauncher(),
+          child: const _DiagnosticsLauncher(),
         ),
 
         const SizedBox(height: 16),
@@ -136,7 +136,7 @@ class _Section extends StatelessWidget {
                 AnimatedRotation(
                   turns: expanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.expand_more_rounded, color: AppColors.inkMuted),
+                  child: const Icon(Icons.expand_more_rounded, color: AppColors.inkMuted),
                 ),
               ]),
             ),
@@ -244,7 +244,7 @@ class _AppIdentityState extends ConsumerState<_AppIdentityForm> {
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     // ── Company Logo ──────────────────────────────────────────────────────────
-    FieldLabel('Company Logo'),
+    const FieldLabel('Company Logo'),
     const LogoPickerWidget(),
     const SizedBox(height: 16),
     // ── Identity fields ───────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ class _InventoryFormState extends ConsumerState<_InventoryForm> {
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    FieldLabel('Low Stock Alert Threshold'),
+    const FieldLabel('Low Stock Alert Threshold'),
     Text('Alert when jar count drops below:', style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
     const SizedBox(height: 8),
     Row(children: [
@@ -394,7 +394,7 @@ class _InventoryFormState extends ConsumerState<_InventoryForm> {
       Text('jars', style: GoogleFonts.inter(fontSize: 14, color: AppColors.inkMuted)),
     ]),
     const SizedBox(height: 16),
-    FieldLabel('Overdue Return Alert'),
+    const FieldLabel('Overdue Return Alert'),
     Text('Flag customers with jars out for more than:', style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
     const SizedBox(height: 8),
     Row(children: [
@@ -403,7 +403,7 @@ class _InventoryFormState extends ConsumerState<_InventoryForm> {
       Text('days', style: GoogleFonts.inter(fontSize: 14, color: AppColors.inkMuted)),
     ]),
     const SizedBox(height: 16),
-    _InfoBox(
+    const _InfoBox(
       title: 'Inventory Sync Logic',
       items: [
         '↓ Delivery: Stock decreases, customer jars increase',
@@ -458,7 +458,7 @@ class _PaymentFormState extends ConsumerState<_PaymentForm> {
       value: _audit, onChanged: (v) => setState(() => _audit = v),
     ),
     const SizedBox(height: 8),
-    _InfoBox(
+    const _InfoBox(
       title: 'Payment Sync Rules',
       items: [
         'Credit = billed but not collected (shows as "due")',
@@ -518,7 +518,7 @@ class _ThemeFormState extends ConsumerState<_ThemeForm> {
     final primary = Theme.of(context).colorScheme.primary;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // ── Mode selector ──────────────────────────────────────────────────────
-      FieldLabel('App Theme'),
+      const FieldLabel('App Theme'),
       Row(children: ['system', 'light', 'dark'].map((m) {
         final active = _themeMode == m;
         final idx = ['system', 'light', 'dark'].indexOf(m);
@@ -1082,12 +1082,12 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // Name
-      FieldLabel('Staff Name *'),
+      const FieldLabel('Staff Name *'),
       TextField(controller: _name, decoration: const InputDecoration(hintText: 'e.g. Ramesh Kumar')),
       const SizedBox(height: 12),
 
       // Phone
-      FieldLabel('Phone (optional)'),
+      const FieldLabel('Phone (optional)'),
       TextField(controller: _phone, keyboardType: TextInputType.phone,
           decoration: const InputDecoration(hintText: '10-digit mobile')),
       const SizedBox(height: 12),
@@ -1128,7 +1128,7 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
       const SizedBox(height: 16),
 
       // Permissions
-      FieldLabel('Permissions'),
+      const FieldLabel('Permissions'),
       const SizedBox(height: 8),
       ..._allPerms.map((rec) {
         final (id, label, desc) = rec;
@@ -1246,7 +1246,7 @@ class _DiagnosticsLauncher extends StatelessWidget {
       ),
       const SizedBox(height: 14),
       Row(children: [
-        Icon(Icons.storage_rounded, size: 13, color: AppColors.inkMuted),
+        const Icon(Icons.storage_rounded, size: 13, color: AppColors.inkMuted),
         const SizedBox(width: 6),
         Expanded(child: Text(
           'mrwaterprov1-54c3f · Firebase RTDB',

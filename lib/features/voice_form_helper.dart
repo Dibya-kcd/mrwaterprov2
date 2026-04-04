@@ -102,7 +102,7 @@ class VoiceNumberParser {
     final s = HindiTranslator.translate(raw).toLowerCase().trim();
     if (s.contains('half') || s.contains('aadha')) return -1;
     if (s.contains('full') || s.contains('poora') || s.contains('all') ||
-        s.contains('complete') || s.contains('sab')) return -2;
+        s.contains('complete') || s.contains('sab')) { return -2; }
     if (_isZero(s)) return 0;
 
     // "five hundred", "paanch sau"
@@ -357,10 +357,10 @@ class _VoiceFormSheetState extends ConsumerState<VoiceFormSheet> {
   String _greeting() {
     final custLine = _cust != null ? '👤 ${_cust!.name} selected.\n\n' : '';
     return switch (widget.formType) {
-      VoiceFormType.delivery  => '${custLine}🚚 Delivery — How many Cool jars delivered? (say "0" if none)',
-      VoiceFormType.event     => '${custLine}🎉 Event delivery — How many Cool jars?',
-      VoiceFormType.returnJars=> '${custLine}📦 Return Jars — How many Cool jars returned? (say "0" if none)',
-      VoiceFormType.payment   => '${custLine}💰 Payment — How much was collected?\n(e.g. "200", "full", "zero")',
+      VoiceFormType.delivery  => '$custLine🚚 Delivery — How many Cool jars delivered? (say "0" if none)',
+      VoiceFormType.event     => '$custLine🎉 Event delivery — How many Cool jars?',
+      VoiceFormType.returnJars=> '$custLine📦 Return Jars — How many Cool jars returned? (say "0" if none)',
+      VoiceFormType.payment   => '$custLine💰 Payment — How much was collected?\n(e.g. "200", "full", "zero")',
       VoiceFormType.expense   => '📉 Expense — What is the category?\n(e.g. Petrol, Salary, Repair)',
     };
   }
@@ -396,8 +396,8 @@ class _VoiceFormSheetState extends ConsumerState<VoiceFormSheet> {
       case _Step.expenseCategory:   _handleExpCat(raw); break;
       case _Step.expenseAmount:     _handleExpAmt(tr); break;
       case _Step.done:
-        if (NluEngine.isConfirm(tr)) _finish();
-        else _bot('Say "yes" to apply, "no" to cancel.');
+        if (NluEngine.isConfirm(tr)) {_finish(); }
+        else { _bot('Say "yes" to apply, "no" to cancel.'); }
     }
   }
 
@@ -886,7 +886,7 @@ class _InlineSuggCards extends StatelessWidget {
                   style: GoogleFonts.inter(fontSize: 11,
                       fontWeight: FontWeight.w700, color: primary)),
               const SizedBox(width: 4),
-              Icon(Icons.chevron_right_rounded,
+              const Icon(Icons.chevron_right_rounded,
                   color: AppColors.inkMuted, size: 16),
             ]),
           ),

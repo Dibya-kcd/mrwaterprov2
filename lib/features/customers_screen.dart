@@ -62,7 +62,7 @@ class _CustScreenState extends ConsumerState<CustomersScreen> {
                 border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
               ),
               child: Row(children: [
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Icon(Icons.search_rounded, color: AppColors.inkMuted, size: 18)),
                 Expanded(child: TextField(
                   onChanged: (v) => setState(() => _search = v),
@@ -266,7 +266,7 @@ class CustDetail extends ConsumerWidget {
           if (c.notes.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.notes_rounded, size: 12, color: AppColors.inkMuted),
+              const Icon(Icons.notes_rounded, size: 12, color: AppColors.inkMuted),
               const SizedBox(width: 6),
               Expanded(child: Text(c.notes,
                   style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted))),
@@ -276,7 +276,7 @@ class CustDetail extends ConsumerWidget {
       ),
 
       // ── Recent Transactions ───────────────────────────────────────────────
-      SectionHeader(title: 'Recent Transactions'),
+      const SectionHeader(title: 'Recent Transactions'),
       if (txns.isEmpty)
         Text('No transactions yet', style: GoogleFonts.inter(color: AppColors.inkMuted))
       else
@@ -436,7 +436,7 @@ class _AddCustFormState extends ConsumerState<AddCustForm> {
   Widget build(BuildContext context) => Form(
     key: _formKey,
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      FieldLabel('Full Name *'),
+      const FieldLabel('Full Name *'),
       TextFormField(
         controller: _name,
         decoration: const InputDecoration(hintText: 'e.g. Rajesh Kumar'),
@@ -447,7 +447,7 @@ class _AddCustFormState extends ConsumerState<AddCustForm> {
         },
       ),
       const SizedBox(height: 12),
-      FieldLabel('Mobile Number *'),
+      const FieldLabel('Mobile Number *'),
       TextFormField(
         controller: _phone,
         keyboardType: TextInputType.phone,
@@ -459,10 +459,10 @@ class _AddCustFormState extends ConsumerState<AddCustForm> {
         },
       ),
       const SizedBox(height: 12),
-      FieldLabel('Area / Route'),
+      const FieldLabel('Area / Route'),
       TextFormField(controller: _area, decoration: const InputDecoration(hintText: 'Koregaon Park')),
       const SizedBox(height: 12),
-      FieldLabel('Address'),
+      const FieldLabel('Address'),
       TextFormField(controller: _addr, maxLines: 2, decoration: const InputDecoration(hintText: '12 Rose Apartments...')),
       const SizedBox(height: 24),
       GradientButton(
@@ -645,15 +645,15 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
         // ── Basic Info ─────────────────────────────────────────────────────
-        _SectionDivider(label: 'Basic Info', icon: Icons.person_rounded),
-        FieldLabel('Full Name *'),
+        const _SectionDivider(label: 'Basic Info', icon: Icons.person_rounded),
+        const FieldLabel('Full Name *'),
         TextFormField(
           controller: _name,
           decoration: const InputDecoration(hintText: 'e.g. Rajesh Kumar'),
           validator: (v) => (v == null || v.trim().length < 3) ? 'At least 3 characters' : null,
         ),
         const SizedBox(height: 12),
-        FieldLabel('Mobile Number *'),
+        const FieldLabel('Mobile Number *'),
         TextFormField(
           controller: _phone,
           keyboardType: TextInputType.phone,
@@ -667,12 +667,12 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            FieldLabel('Area / Route'),
+            const FieldLabel('Area / Route'),
             TextFormField(controller: _area, decoration: const InputDecoration(hintText: 'Koregaon Park')),
           ])),
         ]),
         const SizedBox(height: 12),
-        FieldLabel('Address'),
+        const FieldLabel('Address'),
         TextFormField(controller: _addr, maxLines: 2,
             decoration: const InputDecoration(hintText: '12 Rose Apartments...')),
 
@@ -685,7 +685,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         ),
 
         // ── Jars With Customer (Owner's Stock) ─────────────────────────────
-        _SectionDivider(label: 'Your Jars With Customer', icon: Icons.inventory_2_rounded),
+        const _SectionDivider(label: 'Your Jars With Customer', icon: Icons.inventory_2_rounded),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -743,7 +743,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         ),
 
         // ── Customer's Own Jars ────────────────────────────────────────────
-        _SectionDivider(label: "Customer's Own Jars", icon: Icons.business_center_rounded),
+        const _SectionDivider(label: "Customer's Own Jars", icon: Icons.business_center_rounded),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -778,10 +778,10 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         ),
 
         // ── Financials ─────────────────────────────────────────────────────
-        _SectionDivider(label: 'Financials', icon: Icons.account_balance_wallet_rounded),
+        const _SectionDivider(label: 'Financials', icon: Icons.account_balance_wallet_rounded),
 
         // Balance (advance/dues)
-        FieldLabel('Opening Balance'),
+        const FieldLabel('Opening Balance'),
         _BalanceField(
           type: _balanceType,
           ctrl: _balance,
@@ -791,7 +791,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         const SizedBox(height: 12),
 
         // Security Deposit
-        FieldLabel('Security Deposit', hint: '(refundable, for records only)'),
+        const FieldLabel('Security Deposit', hint: '(refundable, for records only)'),
         TextFormField(
           controller: _secDeposit,
           keyboardType: TextInputType.number,
@@ -799,7 +799,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         ),
 
         // ── Custom Pricing ─────────────────────────────────────────────────
-        _SectionDivider(label: 'Custom Pricing', icon: Icons.sell_rounded),
+        const _SectionDivider(label: 'Custom Pricing', icon: Icons.sell_rounded),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -838,7 +838,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         ),
 
         // ── Notes ──────────────────────────────────────────────────────────
-        _SectionDivider(label: 'Notes', icon: Icons.notes_rounded),
+        const _SectionDivider(label: 'Notes', icon: Icons.notes_rounded),
         TextFormField(
           controller: _notes,
           maxLines: 3,
@@ -1148,7 +1148,7 @@ class _CustomerQuickSheet extends ConsumerWidget {
     final okC   = AppColors.successColor(isDark);
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      _QBtn(
+      _qBtn(
         icon: Icons.local_shipping_rounded,
         label: 'New Delivery',
         sublabel: 'Door-to-door jar delivery',
@@ -1156,11 +1156,11 @@ class _CustomerQuickSheet extends ConsumerWidget {
         onTap: () {
           Navigator.pop(context);
           showMrSheet(context, title: '🚚 New Delivery',
-              builder: (_) => DeliveryForm());
+              builder: (_) => const DeliveryForm());
         },
       ),
       const SizedBox(height: 10),
-      _QBtn(
+      _qBtn(
         icon: Icons.celebration_rounded,
         label: 'New Event',
         sublabel: 'Bulk / one-off event order',
@@ -1168,11 +1168,11 @@ class _CustomerQuickSheet extends ConsumerWidget {
         onTap: () {
           Navigator.pop(context);
           showMrSheet(context, title: '🎉 New Event',
-              builder: (_) => EventForm());
+              builder: (_) => const EventForm());
         },
       ),
       const SizedBox(height: 10),
-      _QBtn(
+      _qBtn(
         icon: Icons.undo_rounded,
         label: 'Return Jars',
         sublabel: 'Collect jars back from customer',
@@ -1180,11 +1180,11 @@ class _CustomerQuickSheet extends ConsumerWidget {
         onTap: () {
           Navigator.pop(context);
           showMrSheet(context, title: '📦 Return Jars',
-              builder: (_) => ReturnJarForm());
+              builder: (_) => const ReturnJarForm());
         },
       ),
       const SizedBox(height: 10),
-      _QBtn(
+      _qBtn(
         icon: Icons.payments_rounded,
         label: 'Record Payment',
         sublabel: 'Settle dues or add advance',
@@ -1192,14 +1192,14 @@ class _CustomerQuickSheet extends ConsumerWidget {
         onTap: () {
           Navigator.pop(context);
           showMrSheet(context, title: '💰 Record Payment',
-              builder: (_) => PaymentForm());
+              builder: (_) => const PaymentForm());
         },
       ),
       const SizedBox(height: 8),
     ]);
   }
 
-  Widget _QBtn({
+  Widget _qBtn({
     required IconData icon,
     required String label,
     required String sublabel,

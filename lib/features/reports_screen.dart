@@ -170,7 +170,7 @@ class _ReportRow extends StatelessWidget {
                 maxLines: 2, overflow: TextOverflow.ellipsis),
           ])),
           const SizedBox(width: 8),
-          Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.inkMuted),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.inkMuted),
         ]),
       ),
     );
@@ -427,7 +427,7 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
                           ])),
                           Icon(Icons.check_circle_rounded, size: 16, color: c),
                           const SizedBox(width: 6),
-                          Icon(Icons.close_rounded, size: 15,
+                          const Icon(Icons.close_rounded, size: 15,
                               color: AppColors.inkMuted),
                         ]),
                       ),
@@ -651,7 +651,7 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
                 ),
                 child: _generating
                     ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        SizedBox(width: 18, height: 18,
+                        const SizedBox(width: 18, height: 18,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white)),
                         const SizedBox(width: 10),
@@ -743,9 +743,13 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         child: child!,
       ),
     );
-    if (range != null) setState(() {
-      _from = range.start; _to = range.end; _generated = false;
-    });
+    if (range != null) {
+      setState(() {
+        _from = range.start;
+        _to = range.end;
+        _generated = false;
+      });
+    }
   }
 
   // cached data for export
@@ -805,7 +809,9 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         } else {
           _exportHeads = ['Customer','Cool Del','PET Del','Billed','Paid','Due'];
           final byCust = <String, List<JarTransaction>>{};
-          for (final t in custTxns) byCust.putIfAbsent(t.customerId, () => []).add(t);
+          for (final t in custTxns) {
+            byCust.putIfAbsent(t.customerId, () => []).add(t);
+          }
           _exportRows = byCust.entries.map((e) {
             final cd = e.value.fold(0, (s, t) => s + t.coolDelivered);
             final pd = e.value.fold(0, (s, t) => s + t.petDelivered);
@@ -1011,17 +1017,17 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         final name = '${_exportTitle.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}';
         final file = File('${dir.path}/$name.pdf');
         await file.writeAsBytes(bytes);
-        if (mounted) showToast(context, '✅ Saved to Documents', success: true);
+        if (context.mounted) showToast(context, '✅ Saved to Documents', success: true);  // ignore: use_build_context_synchronously
       } else {
         final csv  = _buildCsv();
         final dir  = await getApplicationDocumentsDirectory();
         final name = '${_exportTitle.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}';
         final file = File('${dir.path}/$name.csv');
         await file.writeAsString(csv);
-        if (mounted) showToast(context, '✅ CSV saved to Documents', success: true);
+        if (context.mounted) showToast(context, '✅ CSV saved to Documents', success: true);  // ignore: use_build_context_synchronously
       }
     } catch (e) {
-      if (mounted) showToast(context, 'Error: $e', error: true);
+      if (context.mounted) showToast(context, 'Error: $e', error: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -1041,7 +1047,7 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         await Share.shareXFiles([XFile(file.path)], subject: _exportTitle);
       }
     } catch (e) {
-      if (mounted) showToast(context, 'Share error: $e', error: true);
+      if (context.mounted) showToast(context, 'Share error: $e', error: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -1056,7 +1062,7 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         await Printing.layoutPdf(onLayout: (fmt) async => pdf.save());
       }
     } catch (e) {
-      if (mounted) showToast(context, 'Print error: $e', error: true);
+      if (context.mounted) showToast(context, 'Print error: $e', error: true);  // ignore: use_build_context_synchronously
     }
   }
 }
@@ -1228,7 +1234,7 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
                         ])),
                         Icon(Icons.check_circle_rounded, size: 18, color: c),
                         const SizedBox(width: 6),
-                        Icon(Icons.close_rounded, size: 16, color: AppColors.inkMuted),
+                        const Icon(Icons.close_rounded, size: 16, color: AppColors.inkMuted),
                       ]),
                     ),
                   ),
@@ -1385,7 +1391,7 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
                                             label: '₹${cu.balance.toInt()} Cr',
                                             color: AppColors.successColor(isDark))
                                       else
-                                        _StatusBadge(
+                                        const _StatusBadge(
                                             label: 'Clear',
                                             color: AppColors.inkMuted),
                                     ]),
@@ -1534,7 +1540,7 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
                 ),
                 child: _generating
                     ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 18, height: 18,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white),
@@ -1719,7 +1725,7 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
     final bytes = await _buildPdf();
     final name  = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
     await Printing.sharePdf(bytes: bytes, filename: name);
-    if (mounted) {
+    if (context.mounted) {
       showToast(context, '✅ Sharing for download', success: true);
     }
   }
@@ -2007,9 +2013,9 @@ class _CustPicker extends ConsumerWidget {
       onTap: () => showMrSheet(context, title: '👤 Select Customer',
         builder: (_) => Column(children: [
           // allowAll always true — show All Customers option
-          _PickRow(null, 'All Customers', '', null == selectedId, color, isDark,
+          _pickRow(null, 'All Customers', '', null == selectedId, color, isDark,
               () { onSelect(null); Navigator.pop(context); }),
-          ...custs.map((c) => _PickRow(c.initials, c.name, c.area.isNotEmpty ? c.area : c.phone,
+          ...custs.map((c) => _pickRow(c.initials, c.name, c.area.isNotEmpty ? c.area : c.phone,
               c.id == selectedId, color, isDark,
               () { onSelect(c.id); Navigator.pop(context); })),
         ]),
@@ -2037,7 +2043,7 @@ class _CustPicker extends ConsumerWidget {
     );
   }
 
-  Widget _PickRow(String? initials, String name, String sub,
+  Widget _pickRow(String? initials, String name, String sub,
       bool sel, Color c, bool isDark, VoidCallback onTap) =>
     GestureDetector(onTap: onTap, child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2051,7 +2057,7 @@ class _CustPicker extends ConsumerWidget {
         if (initials != null)
           CustomerAvatar(initials: initials, size: 28)
         else
-          Icon(Icons.people_rounded, size: 18, color: AppColors.inkMuted),
+          const Icon(Icons.people_rounded, size: 18, color: AppColors.inkMuted),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
@@ -2313,20 +2319,20 @@ class _InvoicePreview extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start, children: [
 
             // ── Delivery summary ──────────────────────────────────────────
-            _InvSection('Deliveries in Period', isDark: isDark, c: c),
+            _invSection('Deliveries in Period', isDark: isDark, c: c),
             const SizedBox(height: 8),
-            _InvRow2Col('Cool Jars Delivered', '$coolDel × ₹${coolPrice.toInt()}',
+            _invRow2Col('Cool Jars Delivered', '$coolDel × ₹${coolPrice.toInt()}',
                 '₹${(coolDel * coolPrice).toInt()}', isDark: isDark, c: c),
-            _InvRow2Col('PET Jars Delivered',  '$petDel × ₹${petPrice.toInt()}',
+            _invRow2Col('PET Jars Delivered',  '$petDel × ₹${petPrice.toInt()}',
                 '₹${(petDel * petPrice).toInt()}', isDark: isDark, c: c),
-            if (coolRet > 0) _InvRow2Col('Cool Returned', '$coolRet jars', '', isDark: isDark, c: c),
-            if (petRet  > 0) _InvRow2Col('PET Returned',  '$petRet jars',  '', isDark: isDark, c: c),
-            if (transport > 0) _InvRow2Col('Transport Fee', '',  '₹${transport.toInt()}', isDark: isDark, c: c),
-            if (damage    > 0) _InvRow2Col('Damage Charge', '', '₹${damage.toInt()}',    isDark: isDark, c: c),
+            if (coolRet > 0) _invRow2Col('Cool Returned', '$coolRet jars', '', isDark: isDark, c: c),
+            if (petRet  > 0) _invRow2Col('PET Returned',  '$petRet jars',  '', isDark: isDark, c: c),
+            if (transport > 0) _invRow2Col('Transport Fee', '',  '₹${transport.toInt()}', isDark: isDark, c: c),
+            if (damage    > 0) _invRow2Col('Damage Charge', '', '₹${damage.toInt()}',    isDark: isDark, c: c),
             const SizedBox(height: 12),
 
             // ── Current jar balance ───────────────────────────────────────
-            _InvSection('Current Jar Balance (Live)', isDark: isDark, c: c),
+            _invSection('Current Jar Balance (Live)', isDark: isDark, c: c),
             const SizedBox(height: 8),
             Row(children: [
               _JarBalChip(label: 'Cool with Customer',
@@ -2338,7 +2344,7 @@ class _InvoicePreview extends StatelessWidget {
             const SizedBox(height: 12),
 
             // ── Billing summary ───────────────────────────────────────────
-            _InvSection('Billing Summary', isDark: isDark, c: c),
+            _invSection('Billing Summary', isDark: isDark, c: c),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -2347,10 +2353,10 @@ class _InvoicePreview extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(children: [
-                _BillLine('Total Billed',    _fm(billed),  c,        isDark),
-                _BillLine('Amount Paid',     _fm(paid),    AppColors.successColor(isDark), isDark),
+                _billLine('Total Billed',    _fm(billed),  c,        isDark),
+                _billLine('Amount Paid',     _fm(paid),    AppColors.successColor(isDark), isDark),
                 const Divider(height: 16),
-                _BillLine('Balance Due',     _fm(due),
+                _billLine('Balance Due',     _fm(due),
                     due > 0 ? AppColors.dangerColor(isDark) : AppColors.successColor(isDark), isDark,
                     bold: true),
               ]),
@@ -2362,11 +2368,11 @@ class _InvoicePreview extends StatelessWidget {
   }
 }
 
-Widget _InvSection(String label, {required bool isDark, required Color c}) =>
+Widget _invSection(String label, {required bool isDark, required Color c}) =>
   Text(label.toUpperCase(), style: GoogleFonts.inter(
       fontSize: 9, fontWeight: FontWeight.w800, color: c, letterSpacing: 0.6));
 
-Widget _InvRow2Col(String label, String detail, String amount,
+Widget _invRow2Col(String label, String detail, String amount,
     {required bool isDark, required Color c}) =>
   Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -2383,7 +2389,7 @@ Widget _InvRow2Col(String label, String detail, String amount,
     ]),
   );
 
-Widget _BillLine(String label, String value, Color color, bool isDark,
+Widget _billLine(String label, String value, Color color, bool isDark,
     {bool bold = false}) =>
   Padding(
     padding: const EdgeInsets.symmetric(vertical: 2),
@@ -2432,19 +2438,30 @@ class _LedgerPreview extends StatelessWidget {
       this.ledgerType = 'all'});
 
   String _type(JarTransaction t) {
-    if (t.billedAmount == 0 && t.amountCollected > 0)
+    if (t.billedAmount == 0 && t.amountCollected > 0) {
       return t.paymentMode == 'advance' ? 'Advance' : 'Payment';
+    }
     if (t.coolDelivered == 0 && t.petDelivered == 0 &&
-        (t.coolReturned > 0 || t.petReturned > 0)) return 'Return';
+        (t.coolReturned > 0 || t.petReturned > 0)) {
+      return 'Return';
+    }
     return t.deliveryType == 'event' ? 'Event' : 'Daily';
   }
 
   String _jars(JarTransaction t) {
     final parts = <String>[];
-    if (t.coolDelivered > 0) parts.add('↓${t.coolDelivered}C');
-    if (t.petDelivered  > 0) parts.add('↓${t.petDelivered}P');
-    if (t.coolReturned  > 0) parts.add('↑${t.coolReturned}C');
-    if (t.petReturned   > 0) parts.add('↑${t.petReturned}P');
+    if (t.coolDelivered > 0) {
+      parts.add('↓${t.coolDelivered}C');
+    }
+    if (t.petDelivered  > 0) {
+      parts.add('↓${t.petDelivered}P');
+    }
+    if (t.coolReturned  > 0) {
+      parts.add('↑${t.coolReturned}C');
+    }
+    if (t.petReturned   > 0) {
+      parts.add('↑${t.petReturned}P');
+    }
     return parts.isEmpty ? '—' : parts.join(' ');
   }
 
@@ -2573,7 +2590,7 @@ class _LedgerPreview extends StatelessWidget {
         ),
         // Table: newest row on top
         _Table(isDark: isDark, c: c,
-          heads: ['Date & Time', 'Type', 'Jars', 'Billed', 'Paid', 'Balance'],
+          heads: const ['Date & Time', 'Type', 'Jars', 'Billed', 'Paid', 'Balance'],
           rows: displayRows.map((t) => [
             _fdt(t.createdAt), _type(t), _jars(t),
             _fm(t.billedAmount), _fm(t.amountCollected),
@@ -2584,7 +2601,9 @@ class _LedgerPreview extends StatelessWidget {
 
     // All customers grouped — same fixes: newest-first display, no "Clear" badge
     final byCust = <String, List<JarTransaction>>{};
-    for (final t in filtered) byCust.putIfAbsent(t.customerId, () => []).add(t);
+    for (final t in filtered) {
+      byCust.putIfAbsent(t.customerId, () => []).add(t);
+    }
 
     return Column(children: byCust.entries.map((e) {
       final cust   = custs.cast<Customer?>().firstWhere((x) => x?.id == e.key, orElse: () => null);
@@ -2632,7 +2651,7 @@ class _LedgerPreview extends StatelessWidget {
               ],
             ])),
           _Table(isDark: isDark, c: c,
-            heads: ['Date & Time', 'Type', 'Jars', 'Billed', 'Paid', 'Bal'],
+            heads: const ['Date & Time', 'Type', 'Jars', 'Billed', 'Paid', 'Bal'],
             rows: displayRows.map((t) => [
               _fdt(t.createdAt), _type(t), _jars(t),
               _fm(t.billedAmount), _fm(t.amountCollected),
@@ -2670,7 +2689,7 @@ class _DeliveryPreview extends StatelessWidget {
               style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted))),
         )
       else
-        _Table(isDark: isDark, c: c, heads: ['Date & Time','Customer','Cool','PET'],
+        _Table(isDark: isDark, c: c, heads: const ['Date & Time','Customer','Cool','PET'],
           rows: deliveries.map((t) {
             final coolParts = [
               if (t.coolDelivered > 0) '↓${t.coolDelivered}',
@@ -2706,7 +2725,7 @@ class _PaymentPreview extends StatelessWidget {
         (label:'Pending',   value:_fm(billed-total), color:AppColors.dangerColor(isDark)),
       ]),
       const SizedBox(height: 10),
-      _Table(isDark: isDark, c: c, heads: ['Date & Time','Customer','Mode','Type','Amount'],
+      _Table(isDark: isDark, c: c, heads: const ['Date & Time','Customer','Mode','Type','Amount'],
         rows: payments.map((t)=>[
           _fdt(t.createdAt),
           t.customerName.split(' ').first,
@@ -2732,7 +2751,7 @@ class _OutstandingPreview extends StatelessWidget {
         (label:'Customers', value:'${due.length}', color:c),
       ]),
       const SizedBox(height: 10),
-      _Table(isDark: isDark, c: c, heads: ['Customer','Area','Balance'],
+      _Table(isDark: isDark, c: c, heads: const ['Customer','Area','Balance'],
         rows: due.map((c)=>[c.name.split(' ').first, c.area.isNotEmpty?c.area:'—',
             '₹${c.balance.abs().toInt()} due']).toList()),
     ]);
@@ -2752,7 +2771,7 @@ class _JarBalPreview extends StatelessWidget {
         (label:'Customers', value:'${list.length}', color:c),
       ]),
       const SizedBox(height: 10),
-      _Table(isDark: isDark, c: c, heads: ['Customer','Area','Cool','PET'],
+      _Table(isDark: isDark, c: c, heads: const ['Customer','Area','Cool','PET'],
         rows: list.map((c)=>[c.name.split(' ').first, c.area.isNotEmpty?c.area:'—',
             '${c.coolOut}', '${c.petOut}']).toList()),
     ]);
@@ -2774,7 +2793,7 @@ class _StockPreview extends StatelessWidget {
         (label:'Cool Out',   value:'${inv.coolOut}',   color:c),
       ]),
       const SizedBox(height: 10),
-      _Table(isDark: isDark, c: c, heads: ['Type','Out','In','Damaged','Net'],
+      _Table(isDark: isDark, c: c, heads: const ['Type','Out','In','Damaged','Net'],
         rows: [
           ['Cool','$cd','$cr','${txns.fold(0,(s,t)=>s+t.coolDamaged)}','${cd-cr}'],
           ['PET', '$pd','$pr','${txns.fold(0,(s,t)=>s+t.petDamaged)}', '${pd-pr}'],
@@ -2797,7 +2816,7 @@ class _SalesPreview extends StatelessWidget {
         (label:'Pending',   value:_fm(rev-col), color:AppColors.dangerColor(isDark)),
       ]),
       const SizedBox(height: 10),
-      _Table(isDark: isDark, c: c, heads: ['Source','Amount'],
+      _Table(isDark: isDark, c: c, heads: const ['Source','Amount'],
         rows: [
           ['Cool Jars',  _fm(txns.fold(0.0,(s,t)=>s+t.coolDelivered*t.coolPrice))],
           ['PET Jars',   _fm(txns.fold(0.0,(s,t)=>s+t.petDelivered*t.petPrice))],
@@ -2840,13 +2859,13 @@ class _ExpensePreview extends StatelessWidget {
       else ...[
         // Summary by category
         _Table(isDark: isDark, c: c,
-          heads: ['Category', 'Amount'],
+          heads: const ['Category', 'Amount'],
           rows: byCategory.entries.map((e) => [e.key, _fm(e.value)]).toList()
             ..add(['TOTAL', _fm(total)])),
         const SizedBox(height: 10),
         // Itemised list
         _Table(isDark: isDark, c: c,
-          heads: ['Date', 'Category', 'Mode', 'Amount'],
+          heads: const ['Date', 'Category', 'Mode', 'Amount'],
           rows: expenses.map((t) => [
             _fd(t.date),
             t.customerName,
@@ -2874,7 +2893,7 @@ class _PnLPreview extends StatelessWidget {
         (label:'Net',      value:_fm(net), color:net>=0?AppColors.successColor(isDark):AppColors.dangerColor(isDark)),
       ]),
       const SizedBox(height: 10),
-      _Table(isDark: isDark, c: c, heads: ['Line','Amount'],
+      _Table(isDark: isDark, c: c, heads: const ['Line','Amount'],
         rows: [
           ['(+) Revenue',    _fm(rev)],
           ['(+) Collected',  _fm(col)],
@@ -3270,7 +3289,7 @@ class _EventPayPreview extends StatelessWidget {
         _empty(isDark)
       else
         _Table(isDark: isDark, c: c,
-          heads: ['Date', 'Customer', 'Event', 'Jars', 'Billed', 'Paid', 'Pending'],
+          heads: const ['Date', 'Customer', 'Event', 'Jars', 'Billed', 'Paid', 'Pending'],
           rows: groups.map((g) {
             final jars = [
               if (g.coolDelivered > 0) '↓${g.coolDelivered}C',

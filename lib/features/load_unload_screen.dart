@@ -111,7 +111,7 @@ class _ScreenHeader extends StatelessWidget {
               border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.edit_rounded, size: 14, color: AppColors.inkMuted),
+              const Icon(Icons.edit_rounded, size: 14, color: AppColors.inkMuted),
               const SizedBox(width: 5),
               Text('Edit', style: GoogleFonts.inter(
                   fontSize: 12, color: AppColors.inkMuted, fontWeight: FontWeight.w600)),
@@ -191,7 +191,7 @@ class _FlowDiagram extends StatelessWidget {
     final warnC   = AppColors.warningColor(isDark);
     final dangerC = AppColors.dangerColor(isDark);
     final bg      = isDark ? AppColors.cardDark : Colors.white;
-    final textDim = AppColors.inkMuted;
+    const textDim = AppColors.inkMuted;
 
     // ── Computed values ──────────────────────────────────────────────────────
     final loaded    = log.coolLoaded + log.petLoaded;
@@ -620,7 +620,7 @@ class _LoadFormState extends ConsumerState<_LoadForm> {
         ]),
       ),
 
-      _FieldGroup('Enter Jars Being Loaded',
+      _fieldGroup('Enter Jars Being Loaded',
           'New jars being put onto the vehicle now', warnC, isDark),
       const SizedBox(height: 14),
 
@@ -712,7 +712,7 @@ class _UnloadFormState extends ConsumerState<_UnloadForm> {
       ),
 
       // ── Section 1: Empty Returned ──────────────────────────────────────────
-      _FieldGroup('📦  Empty Jars Collected',
+      _fieldGroup('📦  Empty Jars Collected',
           'Empty jars physically brought back from customers', AppColors.inkMuted, isDark),
       const SizedBox(height: 14),
       Row(children: [
@@ -725,7 +725,7 @@ class _UnloadFormState extends ConsumerState<_UnloadForm> {
       const SizedBox(height: 22),
 
       // ── Section 2: Filled Returned (not delivered) ─────────────────────────
-      _FieldGroup('🔵  Filled Jars Returned',
+      _fieldGroup('🔵  Filled Jars Returned',
           'Full jars brought back — not delivered to any customer', okC, isDark),
       const SizedBox(height: 14),
       Row(children: [
@@ -943,7 +943,7 @@ class _InfoRow extends StatelessWidget {
 
 // ── Shared helper widgets ─────────────────────────────────────────────────────
 
-Widget _FieldGroup(String title, String subtitle, Color color, bool isDark) =>
+Widget _fieldGroup(String title, String subtitle, Color color, bool isDark) =>
   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800,
         color: isDark ? AppColors.inkDark : AppColors.ink)),
@@ -1022,7 +1022,7 @@ class _HistoryCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.calendar_today_rounded, size: 13, color: AppColors.inkMuted),
+          const Icon(Icons.calendar_today_rounded, size: 13, color: AppColors.inkMuted),
           const SizedBox(width: 6),
           Text(fmt, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700,
               color: isDark ? AppColors.inkDark : AppColors.ink)),

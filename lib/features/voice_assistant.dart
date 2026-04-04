@@ -199,10 +199,10 @@ class NluEngine {
   // Returns -1 for "half", -2 for "full"/"all"
   static double? parseAmount(String raw) {
     final lower = raw.toLowerCase().trim();
-    if (_isZeroWord(lower)) return 0;
-    if (lower.contains('half') || lower.contains('aadha')) return -1;
+    if (_isZeroWord(lower)) { return 0; }
+    if (lower.contains('half') || lower.contains('aadha')) { return -1; }
     if (lower.contains('full') || lower.contains('all') ||
-        lower.contains('poora') || lower.contains('complete')) return -2;
+        lower.contains('poora') || lower.contains('complete')) { return -2; }
 
     // "five hundred" = 500, "two thousand" = 2000
     final muls = <String, double>{
@@ -242,21 +242,21 @@ class NluEngine {
     if (lower == '1' || lower.contains('deliver') || lower.contains('jar') ||
         lower.contains('water') || lower.contains('supply') ||
         lower.contains('bottle') || lower.contains('galon'))
-      return VoiceTxType.delivery;
+      { return VoiceTxType.delivery; }
     if (lower == '2' || lower.contains('event') ||
         lower.contains('function') || lower.contains('party') ||
         lower.contains('bulk') || lower.contains('occasion'))
-      return VoiceTxType.event;
+      { return VoiceTxType.event; }
     if (lower == '3' || lower.contains('payment') || lower.contains('paid') ||
         lower.contains('collect') || lower.contains('money') ||
         lower.contains('cash') || lower.contains('amount') ||
         lower.contains('rupee') || lower.contains('vasool'))
-      return VoiceTxType.payment;
+      { return VoiceTxType.payment; }
     if (lower == '4' || lower.contains('expense') || lower.contains('spend') ||
         lower.contains('cost') || lower.contains('kharcha') ||
         lower.contains('kharche') || lower.contains('petrol') ||
         lower.contains('salary'))
-      return VoiceTxType.expense;
+      { return VoiceTxType.expense; }
     return null;
   }
 
@@ -1501,7 +1501,7 @@ class _SuggestionCards extends StatelessWidget {
                             color: primary)),
                   ),
                   const SizedBox(width: 6),
-                  Icon(Icons.chevron_right_rounded,
+                  const Icon(Icons.chevron_right_rounded,
                       color: AppColors.inkMuted, size: 18),
                 ]),
               ),

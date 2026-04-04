@@ -64,7 +64,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
       final inRange = txDate != null && !txDate.isBefore(_from) && !txDate.isAfter(_to);
       if (!inRange) return false;
       if (_search.isNotEmpty &&
-          !t.customerName.toLowerCase().contains(_search.toLowerCase())) return false;
+          !t.customerName.toLowerCase().contains(_search.toLowerCase())) { return false; }
 
       final isEvent = t.deliveryType == 'event';
 
@@ -119,7 +119,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                 Text('Transactions', style: Theme.of(context).textTheme.headlineLarge),
                 if (!_headerExpanded)
                   Row(children: [
-                    Icon(Icons.calendar_today_rounded, size: 11, color: AppColors.inkMuted),
+                    const Icon(Icons.calendar_today_rounded, size: 11, color: AppColors.inkMuted),
                     const SizedBox(width: 4),
                     Text(collapsedLabel,
                         style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
@@ -256,7 +256,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
   Future<void> _openForm(BuildContext ctx, JarTransaction? tx) async {
     if (tx == null) {
       await showMrSheet(ctx, title: '🚚 New Delivery',
-          builder: (_) => DeliveryForm());
+          builder: (_) => const DeliveryForm());
       return;
     }
     final type = _detectTxType(tx);
@@ -296,7 +296,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
     if (ok && mounted) {
       ref.read(transactionsProvider.notifier).delete(tx);
       if (mounted) {
-        showToast(ctx, 'Transaction deleted & inventory reversed', error: true);
+        showToast(ctx, 'Transaction deleted & inventory reversed', error: true);  // ignore: use_build_context_synchronously
       }
     }
   }
@@ -411,7 +411,7 @@ class _HeaderPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
                 ),
-                child: Icon(Icons.today_rounded, size: 16, color: AppColors.inkMuted),
+                child: const Icon(Icons.today_rounded, size: 16, color: AppColors.inkMuted),
               ),
             ),
           ],
@@ -1273,9 +1273,9 @@ class _TxnFormState extends ConsumerState<TxnForm> {
     } else {
       await ref.read(transactionsProvider.notifier).add(tx);
     }
-    if (mounted) {
-      Navigator.pop(context);
-      showToast(context, widget.existing != null ? '✅ Updated & synced' : '✅ Saved & inventory updated', success: true);
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, widget.existing != null ? '✅ Updated & synced' : '✅ Saved & inventory updated', success: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -1317,7 +1317,7 @@ class _TxnFormState extends ConsumerState<TxnForm> {
         ],
 
         // ── Customer Picker ───────────────────────────────────────────────────
-        FieldLabel('Customer *'),
+        const FieldLabel('Customer *'),
         _CustPicker(
           selected: _cust,
           customers: custs,
@@ -1452,7 +1452,7 @@ class _TxnFormState extends ConsumerState<TxnForm> {
         const SizedBox(height: 16),
 
         // ── Amount Collected ──────────────────────────────────────────────────
-        FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
+        const FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
         _AmountField(
           ctrl: _amtCtrl,
           hint: _billed.toInt().toString(),
@@ -1467,12 +1467,12 @@ class _TxnFormState extends ConsumerState<TxnForm> {
         const SizedBox(height: 16),
 
         // ── Payment Mode ──────────────────────────────────────────────────────
-        FieldLabel('Payment Mode'),
+        const FieldLabel('Payment Mode'),
         PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
         const SizedBox(height: 16),
 
         // ── Note ──────────────────────────────────────────────────────────────
-        FieldLabel('Note (optional)'),
+        const FieldLabel('Note (optional)'),
         TextFormField(
           controller: _noteCtrl,
           maxLines: 2,
@@ -1523,12 +1523,10 @@ class _TxnFormState extends ConsumerState<TxnForm> {
       title: 'Delete Transaction?',
       message: 'Inventory and payments for ${_cust?.name ?? ''} will be reversed. Cannot be undone.',
     );
-    if (ok && mounted) {
+    if (ok && context.mounted) {
       ref.read(transactionsProvider.notifier).delete(widget.existing!);
       Navigator.pop(context);
-      if (mounted) {
-        showToast(context, 'Transaction deleted & inventory reversed', error: true);
-      }
+      showToast(context, 'Transaction deleted & inventory reversed', error: true);
     }
   }
 }
@@ -1688,9 +1686,9 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
     widget.existing != null
         ? await ref.read(transactionsProvider.notifier).edit(widget.existing!, tx)
         : await ref.read(transactionsProvider.notifier).add(tx);
-    if (mounted) {
-      Navigator.pop(context);
-      showToast(context, widget.existing != null ? '✅ Updated' : '✅ Delivery saved', success: true);
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, widget.existing != null ? '✅ Updated' : '✅ Delivery saved', success: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -1728,7 +1726,7 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
                 style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
           ]),
         ),
-      FieldLabel('Customer *'),
+      const FieldLabel('Customer *'),
       _CustPicker(selected: _cust, customers: custs, onSelect: _onCustSelected),
       if (_cust != null) _InlinePriceOverride(
         cust: _cust!, coolCtrl: _coolOverrideCtrl, petCtrl: _petOverrideCtrl,
@@ -1738,7 +1736,7 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
         onChanged: () => setState(() {}), isDark: isDark),
       const SizedBox(height: 20),
 
-      FieldLabel('Jars — Deliver & Collect'),
+      const FieldLabel('Jars — Deliver & Collect'),
       Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.bgDark : AppColors.bg,
@@ -1794,18 +1792,18 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
       ],
       const SizedBox(height: 16),
 
-      FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
+      const FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
       _AmountField(ctrl: _amtCtrl, hint: _billed.toInt().toString(),
         advance: _cust?.advanceBalance ?? 0,
         onChanged: (v) => setState(() => _collected = v),
         onUseAdvance: () => setState(() { _collected = _billed; _amtCtrl.text = _billed.toInt().toString(); })),
       const SizedBox(height: 16),
 
-      FieldLabel('Payment Mode'),
+      const FieldLabel('Payment Mode'),
       PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
       const SizedBox(height: 16),
 
-      FieldLabel('Note (optional)'),
+      const FieldLabel('Note (optional)'),
       TextFormField(controller: _noteCtrl, maxLines: 2,
           decoration: const InputDecoration(hintText: 'Any notes...')),
       const SizedBox(height: 24),
@@ -1945,9 +1943,9 @@ class _EventFormState extends ConsumerState<EventForm> {
     widget.existing != null
         ? await ref.read(transactionsProvider.notifier).edit(widget.existing!, tx)
         : await ref.read(transactionsProvider.notifier).add(tx);
-    if (mounted) {
-      Navigator.pop(context);
-      showToast(context, widget.existing != null ? '✅ Event updated' : '✅ Event saved', success: true);
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, widget.existing != null ? '✅ Event updated' : '✅ Event saved', success: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -1992,7 +1990,7 @@ class _EventFormState extends ConsumerState<EventForm> {
         onTransportChanged: (_) => setState(() {})),
       const SizedBox(height: 20),
 
-      FieldLabel('Customer / Organisation *'),
+      const FieldLabel('Customer / Organisation *'),
       _CustPicker(selected: _cust, customers: custs, onSelect: _onCustSelected),
       if (_cust != null) _InlinePriceOverride(
         cust: _cust!, coolCtrl: _coolOverrideCtrl, petCtrl: _petOverrideCtrl,
@@ -2002,7 +2000,7 @@ class _EventFormState extends ConsumerState<EventForm> {
         onChanged: () => setState(() {}), isDark: isDark),
       const SizedBox(height: 20),
 
-      FieldLabel('Jars — Event Delivery'),
+      const FieldLabel('Jars — Event Delivery'),
       Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.bgDark : AppColors.bg,
@@ -2014,7 +2012,7 @@ class _EventFormState extends ConsumerState<EventForm> {
             final labelW = (bc.maxWidth * 0.22).clamp(56.0, 80.0);
             return Row(children: [
               SizedBox(width: labelW),
-              Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
+              const Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
                   sub: 'jars to event', color: AppColors.purple)),
             ]);
           })),
@@ -2061,18 +2059,18 @@ class _EventFormState extends ConsumerState<EventForm> {
       ],
       const SizedBox(height: 16),
 
-      FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
+      const FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
       _AmountField(ctrl: _amtCtrl, hint: _billed.toInt().toString(),
         advance: _cust?.advanceBalance ?? 0,
         onChanged: (v) => setState(() => _collected = v),
         onUseAdvance: () => setState(() { _collected = _billed; _amtCtrl.text = _billed.toInt().toString(); })),
       const SizedBox(height: 16),
 
-      FieldLabel('Payment Mode'),
+      const FieldLabel('Payment Mode'),
       PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
       const SizedBox(height: 16),
 
-      FieldLabel('Note (optional)'),
+      const FieldLabel('Note (optional)'),
       TextFormField(controller: _noteCtrl, maxLines: 2,
           decoration: const InputDecoration(hintText: 'Any notes...')),
       const SizedBox(height: 24),
@@ -2174,9 +2172,9 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
     widget.existing != null
         ? await ref.read(transactionsProvider.notifier).edit(widget.existing!, tx)
         : await ref.read(transactionsProvider.notifier).add(tx);
-    if (mounted) {
-      Navigator.pop(context);
-      showToast(context, widget.existing != null ? '✅ Return updated' : '✅ Return recorded', success: true);
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, widget.existing != null ? '✅ Return updated' : '✅ Return recorded', success: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -2244,13 +2242,13 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
       const SizedBox(height: 20),
 
       // ── Customer picker ──────────────────────────────────────────────────
-      FieldLabel('Customer *'),
+      const FieldLabel('Customer *'),
       _CustPicker(selected: _cust, customers: custs,
           onSelect: (c) => setState(() => _cust = c)),
       const SizedBox(height: 20),
 
       // ── Jar return steppers ──────────────────────────────────────────────
-      FieldLabel('Jars Being Returned'),
+      const FieldLabel('Jars Being Returned'),
       Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -2299,7 +2297,7 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
         damagePerJar: s.damageChargePerJar),
 
       const SizedBox(height: 16),
-      FieldLabel('Note (optional)'),
+      const FieldLabel('Note (optional)'),
       TextFormField(controller: _noteCtrl, maxLines: 2,
           decoration: const InputDecoration(hintText: 'Any notes...')),
       const SizedBox(height: 24),
@@ -2468,9 +2466,9 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
     widget.existing != null
         ? await ref.read(transactionsProvider.notifier).edit(widget.existing!, tx)
         : await ref.read(transactionsProvider.notifier).add(tx);
-    if (mounted) {
-      Navigator.pop(context);
-      showToast(context, widget.existing != null ? '✅ Payment updated' : '✅ Payment recorded', success: true);
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, widget.existing != null ? '✅ Payment updated' : '✅ Payment recorded', success: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -2543,7 +2541,7 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
       const SizedBox(height: 20),
 
       // ── Customer picker ──────────────────────────────────────────────────
-      FieldLabel('Customer *'),
+      const FieldLabel('Customer *'),
       _CustPicker(selected: _cust, customers: custs, onSelect: _onCustSelected),
 
       // Balance info chip
@@ -2599,12 +2597,12 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
 
       // ── Payment mode (hidden for Advance — mode is forced to 'advance') ──
       if (!isAdvance) ...[
-        FieldLabel('Payment Mode'),
+        const FieldLabel('Payment Mode'),
         PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
         const SizedBox(height: 16),
       ],
 
-      FieldLabel('Note (optional)'),
+      const FieldLabel('Note (optional)'),
       TextFormField(controller: _noteCtrl, maxLines: 2,
           decoration: InputDecoration(
               hintText: isAdvance ? 'Advance deposit reference...' : 'Reference, cheque no...')),
@@ -2689,8 +2687,8 @@ class TxnFormRouter extends StatelessWidget {
         _         => DeliveryForm(existing: existing),
       };
     }
-    if (initialDeliveryType == 'event') return EventForm();
-    return DeliveryForm();
+    if (initialDeliveryType == 'event') return const EventForm();
+    return const DeliveryForm();
   }
 }
 
@@ -2812,14 +2810,14 @@ class _EventDetailsSection extends StatelessWidget {
               fontWeight: FontWeight.w700, color: AppColors.purple)),
         ]),
         const SizedBox(height: 12),
-        FieldLabel('Event Name'),
+        const FieldLabel('Event Name'),
         TextFormField(
           controller: nameCtrl,
           decoration: const InputDecoration(hintText: 'e.g. Annual Conference, Wedding, Seminar'),
           validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter the event name' : null,
         ),
         const SizedBox(height: 12),
-        FieldLabel('Transport / Logistics Fee (optional)'),
+        const FieldLabel('Transport / Logistics Fee (optional)'),
         TextFormField(
           controller: transportCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -2833,7 +2831,7 @@ class _EventDetailsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        FieldLabel('Event Date (optional)'),
+        const FieldLabel('Event Date (optional)'),
         GestureDetector(
           onTap: () async {
             final picked = await showDatePicker(
@@ -2853,7 +2851,7 @@ class _EventDetailsSection extends StatelessWidget {
               border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
             ),
             child: Row(children: [
-              Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.inkMuted),
+              const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.inkMuted),
               const SizedBox(width: 10),
               Expanded(child: Text(
                 eventDate != null
@@ -3216,7 +3214,7 @@ class _BillCard extends StatelessWidget {
       child: Column(children: [
         if (cd > 0) _rIcon(
           leading: Row(mainAxisSize: MainAxisSize.min, children: [
-            CoolJarIcon(size: 14, color: Colors.white70),
+            const CoolJarIcon(size: 14, color: Colors.white70),
             const SizedBox(width: 6),
             Text('Cool ×$cd', style: GoogleFonts.inter(fontSize: 13, color: Colors.white70)),
           ]),
@@ -3224,7 +3222,7 @@ class _BillCard extends StatelessWidget {
         ),
         if (pd > 0) _rIcon(
           leading: Row(mainAxisSize: MainAxisSize.min, children: [
-            PetJarIcon(size: 14, color: Colors.white70),
+            const PetJarIcon(size: 14, color: Colors.white70),
             const SizedBox(width: 6),
             Text('PET ×$pd', style: GoogleFonts.inter(fontSize: 13, color: Colors.white70)),
           ]),
@@ -3549,14 +3547,14 @@ class _QuickAddCustomerFormState extends ConsumerState<_QuickAddCustomerForm> {
       Text('New customer will be saved and selected automatically.',
           style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
       const SizedBox(height: 16),
-      FieldLabel('Full Name *'),
+      const FieldLabel('Full Name *'),
       TextFormField(
         controller: _name,
         decoration: const InputDecoration(hintText: 'Priya Mehta'),
         validator: (v) => (v == null || v.trim().length < 3) ? 'At least 3 characters' : null,
       ),
       const SizedBox(height: 12),
-      FieldLabel('Mobile Number *'),
+      const FieldLabel('Mobile Number *'),
       TextFormField(
         controller: _phone,
         keyboardType: TextInputType.phone,
@@ -3568,7 +3566,7 @@ class _QuickAddCustomerFormState extends ConsumerState<_QuickAddCustomerForm> {
         },
       ),
       const SizedBox(height: 12),
-      FieldLabel('Area / Route'),
+      const FieldLabel('Area / Route'),
       TextFormField(controller: _area, decoration: const InputDecoration(hintText: 'Koregaon Park')),
       const SizedBox(height: 24),
       GradientButton(

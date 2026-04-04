@@ -142,8 +142,11 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                           isExpanded: isOpen,
                           isDark: isDark,
                           onTap: () => setState(() {
-                            if (isOpen) _expandedDates.remove(date);
-                            else        _expandedDates.add(date);
+                            if (isOpen) {
+                              _expandedDates.remove(date);
+                            } else {
+                              _expandedDates.add(date);
+                            }
                           }),
                         );
                       }
@@ -559,7 +562,7 @@ class _LedgerEntryState extends State<_LedgerEntry> {
 
                 // Time only (date is in group header)
                 Row(children: [
-                  Icon(Icons.schedule_rounded, size: 10, color: AppColors.inkMuted),
+                  const Icon(Icons.schedule_rounded, size: 10, color: AppColors.inkMuted),
                   const SizedBox(width: 3),
                   Text(_fmtTime(tx.createdAt),
                       style: GoogleFonts.inter(fontSize: 10,
@@ -588,14 +591,14 @@ class _LedgerEntryState extends State<_LedgerEntry> {
                   const SizedBox(height: 5),
                   Wrap(spacing: 5, runSpacing: 3, children: [
                     if (tx.coolDelivered > 0)
-                      _JarPill(icon: CoolJarIcon(size: 10, color: Colors.white),
+                      _JarPill(icon: const CoolJarIcon(size: 10, color: Colors.white),
                           label: '↓${tx.coolDelivered}', bg: coolC),
                     if (tx.coolReturned > 0)
                       _JarPill(icon: CoolJarIcon(size: 10, color: coolC),
                           label: '↑${tx.coolReturned}',
                           bg: coolC.withValues(alpha: 0.15), textColor: coolC),
                     if (tx.petDelivered > 0)
-                      _JarPill(icon: PetJarIcon(size: 10, color: Colors.white),
+                      _JarPill(icon: const PetJarIcon(size: 10, color: Colors.white),
                           label: '↓${tx.petDelivered}', bg: petC),
                     if (tx.petReturned > 0)
                       _JarPill(icon: PetJarIcon(size: 10, color: petC),
@@ -680,28 +683,44 @@ class _LedgerEntryState extends State<_LedgerEntry> {
     final isPayment = tx.billedAmount == 0 && tx.amountCollected > 0;
     final isReturn  = tx.coolDelivered == 0 && tx.petDelivered == 0
                    && (tx.coolReturned > 0 || tx.petReturned > 0);
-    if (isPayment && tx.paymentMode == 'advance')
+    if (isPayment && tx.paymentMode == 'advance') {
       return (AppColors.purple, Icons.savings_rounded, 'Advance');
-    if (isPayment)
+    }
+    if (isPayment) {
       return (AppColors.successColor(isDark), Icons.payments_rounded, 'Payment');
-    if (isReturn)
+    }
+    if (isReturn) {
       return (AppColors.coolColor(isDark), Icons.swap_vert_rounded, 'Return');
-    if (tx.deliveryType == 'event')
+    }
+    if (tx.deliveryType == 'event') {
       return (AppColors.purple, Icons.celebration_rounded, 'Event');
-    if (tx.coolDelivered > 0 || tx.petDelivered > 0)
+    }
+    if (tx.coolDelivered > 0 || tx.petDelivered > 0) {
       return (Theme.of(context).colorScheme.primary, Icons.local_shipping_rounded, 'Daily');
+    }
     return (AppColors.inkMuted, Icons.receipt_rounded, 'Txn');
   }
 
   String _entryTitle(JarTransaction tx) {
     final isPayment = tx.billedAmount == 0 && tx.amountCollected > 0;
-    if (isPayment && tx.paymentMode == 'advance') return 'Advance deposited';
-    if (isPayment) return 'Payment received';
-    if (tx.deliveryType == 'event')
+    if (isPayment && tx.paymentMode == 'advance') {
+      return 'Advance deposited';
+    }
+    if (isPayment) {
+      return 'Payment received';
+    }
+    if (tx.deliveryType == 'event') {
       return tx.eventName?.isNotEmpty == true ? tx.eventName! : 'Event delivery';
-    if (tx.coolDelivered > 0 && tx.coolReturned > 0) return 'Delivery & return';
-    if (tx.coolDelivered > 0 || tx.petDelivered > 0) return 'Delivery';
-    if (tx.coolReturned  > 0 || tx.petReturned  > 0) return 'Return';
+    }
+    if (tx.coolDelivered > 0 && tx.coolReturned > 0) {
+      return 'Delivery & return';
+    }
+    if (tx.coolDelivered > 0 || tx.petDelivered > 0) {
+      return 'Delivery';
+    }
+    if (tx.coolReturned  > 0 || tx.petReturned  > 0) {
+      return 'Return';
+    }
     return 'Transaction';
   }
 
@@ -920,19 +939,19 @@ class _HistoryVersion extends StatelessWidget {
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 4, children: [
-          if (cool > 0) _Tag('Cool ↓$cool'),
-          if (coolR > 0) _Tag('Cool ↑$coolR'),
-          if (pet > 0) _Tag('PET ↓$pet'),
-          if (petR > 0) _Tag('PET ↑$petR'),
-          _Tag('₹${billed.toInt()} billed'),
-          _Tag('₹${collected.toInt()} paid', green: true),
-          _Tag('$mode'),
+          if (cool > 0) _tag('Cool ↓$cool'),
+          if (coolR > 0) _tag('Cool ↑$coolR'),
+          if (pet > 0) _tag('PET ↓$pet'),
+          if (petR > 0) _tag('PET ↑$petR'),
+          _tag('₹${billed.toInt()} billed'),
+          _tag('₹${collected.toInt()} paid', green: true),
+          _tag(mode),
         ]),
       ]),
     );
   }
 
-  Widget _Tag(String label, {bool green = false}) => Container(
+  Widget _tag(String label, {bool green = false}) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: (green ? AppColors.success : AppColors.inkMuted).withValues(alpha: 0.1),
@@ -1021,7 +1040,7 @@ class _LedgerEditorState extends ConsumerState<LedgerEditor> {
         const SizedBox(height: 16),
 
         // ── Edit reason (required) ────────────────────────────────────────
-        FieldLabel('Reason for edit *'),
+        const FieldLabel('Reason for edit *'),
         TextFormField(
           controller: _editReasonCtrl,
           decoration: const InputDecoration(
@@ -1032,7 +1051,7 @@ class _LedgerEditorState extends ConsumerState<LedgerEditor> {
         const SizedBox(height: 20),
 
         // ── Jar counts ───────────────────────────────────────────────────────
-        SectionHeader(title: 'Jar Counts'),
+        const SectionHeader(title: 'Jar Counts'),
         _JarEditorRow(
           jarIcon: CoolJarIcon(size: 20, color: coolC),
           label: 'Cool Jars', color: coolC, isDark: isDark,
@@ -1059,30 +1078,30 @@ class _LedgerEditorState extends ConsumerState<LedgerEditor> {
         const SizedBox(height: 20),
 
         // ── Pricing ──────────────────────────────────────────────────────────
-        SectionHeader(title: 'Pricing'),
+        const SectionHeader(title: 'Pricing'),
         Row(children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            FieldLabel('Cool ₹/jar'),
+            const FieldLabel('Cool ₹/jar'),
             _PriceInput(value: _coolPrice, color: coolC, isDark: isDark,
                 onChanged: (v) => setState(() => _coolPrice = v)),
           ])),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            FieldLabel('PET ₹/jar'),
+            const FieldLabel('PET ₹/jar'),
             _PriceInput(value: _petPrice, color: petC, isDark: isDark,
                 onChanged: (v) => setState(() => _petPrice = v)),
           ])),
         ]),
         if (tx.deliveryType == 'event') ...[
           const SizedBox(height: 12),
-          FieldLabel('Transport Fee'),
+          const FieldLabel('Transport Fee'),
           _PriceInput(value: _transportFee, color: AppColors.purple, isDark: isDark,
               onChanged: (v) => setState(() => _transportFee = v)),
         ],
         const SizedBox(height: 20),
 
         // ── Payment ──────────────────────────────────────────────────────────
-        SectionHeader(title: 'Payment'),
+        const SectionHeader(title: 'Payment'),
         // Billed preview
         Container(
           padding: const EdgeInsets.all(12),
@@ -1099,17 +1118,17 @@ class _LedgerEditorState extends ConsumerState<LedgerEditor> {
           ]),
         ),
         const SizedBox(height: 12),
-        FieldLabel('Amount Collected'),
+        const FieldLabel('Amount Collected'),
         _CollectedInput(
           value: _amtCollected, billed: _billed, isDark: isDark,
           onChanged: (v) => setState(() => _amtCollected = v),
           onFullPay: () => setState(() => _amtCollected = _billed),
         ),
         const SizedBox(height: 12),
-        FieldLabel('Payment Mode'),
+        const FieldLabel('Payment Mode'),
         PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
         const SizedBox(height: 12),
-        FieldLabel('Note (optional)'),
+        const FieldLabel('Note (optional)'),
         TextFormField(
           controller: _noteCtrl,
           maxLines: 2,
@@ -1155,9 +1174,9 @@ class _LedgerEditorState extends ConsumerState<LedgerEditor> {
       editNote: _editReasonCtrl.text.trim(),
     );
 
-    if (mounted) {
-      Navigator.pop(context);
-      showToast(context, '✅ Ledger updated — jar status & balance synced', success: true);
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, '✅ Ledger updated — jar status & balance synced', success: true);  // ignore: use_build_context_synchronously
     }
   }
 
@@ -1201,12 +1220,15 @@ class _JarEditorRowState extends State<_JarEditorRow> {
   void didUpdateWidget(_JarEditorRow old) {
     super.didUpdateWidget(old);
     // Sync if parent changes value externally
-    if (old.delivered != widget.delivered && _inCtrl.text != '${widget.delivered}')
+    if (old.delivered != widget.delivered && _inCtrl.text != '${widget.delivered}') {
       _inCtrl.text = '${widget.delivered}';
-    if (old.returned != widget.returned && _outCtrl.text != '${widget.returned}')
+    }
+    if (old.returned != widget.returned && _outCtrl.text != '${widget.returned}') {
       _outCtrl.text = '${widget.returned}';
-    if (old.damaged != widget.damaged && _dmgCtrl.text != '${widget.damaged}')
+    }
+    if (old.damaged != widget.damaged && _dmgCtrl.text != '${widget.damaged}') {
       _dmgCtrl.text = '${widget.damaged}';
+    }
   }
 
   @override
@@ -1261,8 +1283,9 @@ class _JarEditorRowState extends State<_JarEditorRow> {
               final n = _parse(v).clamp(0, widget.maxDeliver);
               widget.onDeliverChanged(n);
               // If dmg > new OUT, clamp dmg
-              if (widget.damaged > widget.returned)
+              if (widget.damaged > widget.returned) {
                 widget.onDamagedChanged(widget.returned);
+              }
             },
           )),
           const SizedBox(width: 6),
@@ -1272,7 +1295,9 @@ class _JarEditorRowState extends State<_JarEditorRow> {
             onChanged: (v) {
               final n = _parse(v).clamp(0, widget.maxReturn);
               widget.onReturnChanged(n);
-              if (widget.damaged > n) widget.onDamagedChanged(n);
+              if (widget.damaged > n) {
+                widget.onDamagedChanged(n);
+              }
             },
           )),
           const SizedBox(width: 6),
@@ -1597,7 +1622,7 @@ class _CollectPaymentSheetState extends ConsumerState<_CollectPaymentSheet> {
       ),
       const SizedBox(height: 20),
 
-      FieldLabel('Amount to Collect'),
+      const FieldLabel('Amount to Collect'),
       Container(
         height: 60,
         decoration: BoxDecoration(
@@ -1641,7 +1666,7 @@ class _CollectPaymentSheetState extends ConsumerState<_CollectPaymentSheet> {
       ),
       const SizedBox(height: 16),
 
-      FieldLabel('Payment Mode'),
+      const FieldLabel('Payment Mode'),
       PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
       const SizedBox(height: 24),
 

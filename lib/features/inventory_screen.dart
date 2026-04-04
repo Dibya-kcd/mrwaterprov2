@@ -165,9 +165,9 @@ class _StockCard extends StatelessWidget {
 
         // Three stats in a row — no overflow possible
         Row(children: [
-          Expanded(child: _Stat('In Warehouse', '$stock', color)),
-          Expanded(child: _Stat('With Customers', '$out', AppColors.inkMuted)),
-          Expanded(child: _Stat('Total Owned', '$total', AppColors.inkMuted)),
+          Expanded(child: _stat('In Warehouse', '$stock', color)),
+          Expanded(child: _stat('With Customers', '$out', AppColors.inkMuted)),
+          Expanded(child: _stat('Total Owned', '$total', AppColors.inkMuted)),
         ]),
         const SizedBox(height: 14),
 
@@ -219,7 +219,7 @@ class _StockCard extends StatelessWidget {
     );
   }
 
-  Widget _Stat(String l, String v, Color c) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _stat(String l, String v, Color c) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(l, style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
     const SizedBox(height: 2),
     Text(v, style: GoogleFonts.jetBrainsMono(fontSize: 18, fontWeight: FontWeight.w700, color: c)),
@@ -272,7 +272,7 @@ class _StockActionFormState extends ConsumerState<_StockActionForm> {
 
       Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          FieldLabel('Cool Jars'),
+          const FieldLabel('Cool Jars'),
           TextFormField(
             controller: _cool,
             keyboardType: TextInputType.number,
@@ -288,7 +288,7 @@ class _StockActionFormState extends ConsumerState<_StockActionForm> {
         ])),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          FieldLabel('PET Jars'),
+          const FieldLabel('PET Jars'),
           TextFormField(
             controller: _pet,
             keyboardType: TextInputType.number,

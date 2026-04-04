@@ -145,11 +145,11 @@ class _QuickActionsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final actions = [
-      _QuickAction(Icons.local_shipping_rounded,    'Create\nDelivery',    const Color(0xFF0096C7)),
-      _QuickAction(Icons.group_add_rounded,         'Create\nCustomer',    const Color(0xFF7B61FF)),
-      _QuickAction(Icons.payments_rounded,          'Create\nPayment',     const Color(0xFF06D6A0)),
-      _QuickAction(Icons.money_off_rounded,          'Create\nExpense',     const Color(0xFFFF8C42)),
+    const actions = [
+      _QuickAction(Icons.local_shipping_rounded,    'Create\nDelivery',    Color(0xFF0096C7)),
+      _QuickAction(Icons.group_add_rounded,         'Create\nCustomer',    Color(0xFF7B61FF)),
+      _QuickAction(Icons.payments_rounded,          'Create\nPayment',     Color(0xFF06D6A0)),
+      _QuickAction(Icons.money_off_rounded,          'Create\nExpense',     Color(0xFFFF8C42)),
       _QuickAction(Icons.document_scanner_rounded,  'Smart\nEntry',        AppColors.purple),
     ];
 
@@ -469,7 +469,7 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
         // TODAY'S SUMMARY
         // ════════════════════════════════════════════════════════════════
         _ACard(isDark: isDark, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _CardHeader(title: "TODAY'S SUMMARY"),
+          const _CardHeader(title: "TODAY'S SUMMARY"),
           const SizedBox(height: 12),
           Row(children: [
             _StatTile(label: 'Revenue',      value: '₹${todayRev.toInt()}',  color: primary,                        isDark: isDark),
@@ -495,7 +495,7 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
         // INVOICES
         // ════════════════════════════════════════════════════════════════
         _ACard(isDark: isDark, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _CardHeader(title: 'INVOICES'),
+          const _CardHeader(title: 'INVOICES'),
           const SizedBox(height: 12),
 
           Row(children: [
@@ -967,9 +967,9 @@ class _QuickDeliverySheetState extends ConsumerState<_QuickDeliverySheet>
       // Forms — rendered directly (not scrollable TabBarView, so the sheet
       // can scroll naturally around the form content)
       if (_tc.index == 0)
-        DeliveryForm()
+        const DeliveryForm()
       else
-        EventForm(),
+        const EventForm(),
     ]);
   }
 }
@@ -1109,7 +1109,7 @@ class _QuickPaymentFormState extends ConsumerState<_QuickPaymentForm> {
       ),
 
       const SizedBox(height: 16),
-      FieldLabel('Amount'),
+      const FieldLabel('Amount'),
       TextFormField(
         controller: _amt,
         keyboardType: TextInputType.number,
@@ -1119,7 +1119,7 @@ class _QuickPaymentFormState extends ConsumerState<_QuickPaymentForm> {
       ),
 
       const SizedBox(height: 16),
-      FieldLabel('Payment Mode'),
+      const FieldLabel('Payment Mode'),
       Row(children: ['cash', 'upi', 'bank'].map((m) {
         final active = _mode == m;
         return Expanded(child: GestureDetector(
@@ -1140,7 +1140,7 @@ class _QuickPaymentFormState extends ConsumerState<_QuickPaymentForm> {
       }).toList()),
 
       const SizedBox(height: 16),
-      FieldLabel('Note (optional)'),
+      const FieldLabel('Note (optional)'),
       TextFormField(controller: _note,
           decoration: const InputDecoration(hintText: 'Reference, cheque no...')),
 

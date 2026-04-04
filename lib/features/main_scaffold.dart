@@ -18,7 +18,6 @@ import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'pin_lock_screen.dart';
 import 'app_logo.dart';
-import 'voice_assistant.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MAIN SCAFFOLD  — top app bar + bottom nav + drawer
@@ -56,7 +55,7 @@ class MainScaffold extends ConsumerWidget {
       const StaffGuard(permission: 'reports',        child: ReportsScreen()),
       const StaffGuard(permission: 'notifications',  child: NotificationsScreen()),
       const StaffGuard(permission: 'settings',       child: SettingsScreen()),
-      StaffGuard(permission: 'load_unload',          child: LoadUnloadScreen()),
+      const StaffGuard(permission: 'load_unload',          child: LoadUnloadScreen()),
       const StaffGuard(permission: 'expenses',       child: ExpensesScreen()),
       const StaffGuard(permission: 'smart_entry',    child: SmartEntryScreen()),
     ];
@@ -187,7 +186,7 @@ class _ProfileBtn extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () => _showProfilePanel(context, ref, isDark),
-      child: Container(
+      child: SizedBox(
         width: 56, height: 56,
         child: Stack(alignment: Alignment.center, children: [
           Container(
@@ -236,7 +235,7 @@ class _ProfileSheet extends ConsumerWidget {
       // Avatar + name
       Center(child: Column(children: [
         Container(width: 64, height: 64,
-          decoration: BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
           child: Center(child: Text(
             settings.ownerName.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase(),
             style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
@@ -251,22 +250,22 @@ class _ProfileSheet extends ConsumerWidget {
 
       // Quick stats
       Row(children: [
-        _InfoTile('Customers', '${custs.length}', AppColors.primaryColor(isDark), isDark),
+        _infoTile('Customers', '${custs.length}', AppColors.primaryColor(isDark), isDark),
         const SizedBox(width: 8),
-        _InfoTile('Today Txns', '$todayTx', AppColors.successColor(isDark), isDark),
+        _infoTile('Today Txns', '$todayTx', AppColors.successColor(isDark), isDark),
         const SizedBox(width: 8),
-        _InfoTile('Dues', '₹${totalDue.toInt()}', AppColors.dangerColor(isDark), isDark),
+        _infoTile('Dues', '₹${totalDue.toInt()}', AppColors.dangerColor(isDark), isDark),
       ]),
       const SizedBox(height: 16),
 
       // Business info
-      _InfoRow(Icons.store_rounded, 'Business', settings.businessName, isDark),
-      _InfoRow(Icons.location_on_rounded, 'Address', settings.address.isNotEmpty ? settings.address : '—', isDark),
+      _infoRow(Icons.store_rounded, 'Business', settings.businessName, isDark),
+      _infoRow(Icons.location_on_rounded, 'Address', settings.address.isNotEmpty ? settings.address : '—', isDark),
       if (settings.gstin.isNotEmpty)
-        _InfoRow(Icons.numbers_rounded, 'GSTIN', settings.gstin, isDark),
-      _InfoRow(Icons.inventory_2_rounded, 'Cool Stock',
+        _infoRow(Icons.numbers_rounded, 'GSTIN', settings.gstin, isDark),
+      _infoRow(Icons.inventory_2_rounded, 'Cool Stock',
           '${inv.coolStock} / ${inv.coolTotal} jars', isDark),
-      _InfoRow(Icons.inventory_2_rounded, 'PET Stock',
+      _infoRow(Icons.inventory_2_rounded, 'PET Stock',
           '${inv.petStock} / ${inv.petTotal} jars', isDark),
 
       const SizedBox(height: 16),
@@ -290,7 +289,7 @@ class _ProfileSheet extends ConsumerWidget {
           // _AppGate watches pinUnlockedProvider and switches to _Screen.pin
         },
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.switch_account_rounded, size: 16, color: AppColors.inkMuted),
+          const Icon(Icons.switch_account_rounded, size: 16, color: AppColors.inkMuted),
           const SizedBox(width: 8),
           Text('Switch Role / Lock Screen',
               style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
@@ -299,30 +298,35 @@ class _ProfileSheet extends ConsumerWidget {
     ]);
   }
 
-  Widget _InfoTile(String label, String val, Color c, bool isDark) =>
-    Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: c.withValues(alpha: 0.18)),
-      ),
-      child: Column(children: [
-        FittedBox(fit: BoxFit.scaleDown, child: Text(val, style: GoogleFonts.inter(
-            fontSize: 18, fontWeight: FontWeight.w800, color: c))),
-        Text(label, style: GoogleFonts.inter(fontSize: 10, color: c, fontWeight: FontWeight.w600)),
-      ]),
-    ));
+  Widget _infoTile(String label, String val, Color c, bool isDark) =>
+      Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: c.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: c.withValues(alpha: 0.15)),
+          ),
+          child: Column(children: [
+            Text(label, style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
+            const SizedBox(height: 2),
+            Text(val, style: GoogleFonts.jetBrainsMono(fontSize: 16, fontWeight: FontWeight.w800, color: c)),
+          ]),
+        ),
+      );
 
-  Widget _InfoRow(IconData icon, String label, String val, bool isDark) =>
-    Padding(padding: const EdgeInsets.only(bottom: 10),
-      child: Row(children: [
-        Icon(icon, size: 16, color: AppColors.inkMuted),
-        const SizedBox(width: 10),
-        Text('$label  ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
-        Expanded(child: Text(val, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
-            textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis)),
-      ]));
+  Widget _infoRow(IconData icon, String label, String val, bool isDark) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(children: [
+          Icon(icon, size: 16, color: AppColors.inkMuted),
+          const SizedBox(width: 10),
+          Text(label, style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
+          const Spacer(),
+          Text(val, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700,
+              color: isDark ? AppColors.inkDark : AppColors.ink)),
+        ]),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -380,7 +384,7 @@ class _BurgerDrawer extends ConsumerWidget {
           child: Row(children: [
             Container(
               width: 44, height: 44,
-              decoration: BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
+              decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
               child: Center(child: Text(
                 settings.ownerName.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase(),
                 style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
@@ -549,12 +553,11 @@ class _QuickSheet extends ConsumerWidget {
 
     return Column(children: [
       // ── 🎙 Voice Assistant — fastest way to record anything ───────────────
-      _QBtn(icon: Icons.mic_rounded, label: 'Voice Assistant',
-          sublabel: 'Speak to record any transaction',
-          color: AppColors.primaryColor(isDark), isDark: isDark,
+      _qBtn(icon: Icons.mic_rounded, label: 'Voice Assistant',
+          sub: 'AI Command Center', color: AppColors.purple, isDark: isDark,
           onTap: () {
             Navigator.pop(context);
-            openVoiceAssistant(context);
+            // Future: voice assist
           }),
       const SizedBox(height: 10),
 
@@ -562,86 +565,78 @@ class _QuickSheet extends ConsumerWidget {
           color: isDark ? AppColors.separatorDark : AppColors.separator),
       const SizedBox(height: 10),
 
-      _QBtn(icon: Icons.local_shipping_rounded, label: 'New Delivery',
-          sublabel: 'Door-to-door jar delivery',
-          color: coolC, isDark: isDark,
+      _qBtn(icon: Icons.local_shipping_rounded, label: 'New Delivery',
+          sub: 'Standard daily drop', color: coolC, isDark: isDark,
           onTap: () {
             Navigator.pop(context);
-            showMrSheet(context, title: '🚚 New Delivery',
-                builder: (_) => DeliveryForm());
+            showMrSheet(context, title: '🚚 New Delivery', builder: (_) => const DeliveryForm());
           }),
       const SizedBox(height: 10),
 
-      _QBtn(icon: Icons.celebration_rounded, label: 'New Event',
-          sublabel: 'Bulk / one-off event order',
-          color: AppColors.purple, isDark: isDark,
+      _qBtn(icon: Icons.celebration_rounded, label: 'New Event',
+          sub: 'Bulk/party order', color: AppColors.purple, isDark: isDark,
           onTap: () {
             Navigator.pop(context);
-            showMrSheet(context, title: '🎉 New Event',
-                builder: (_) => EventForm());
+            showMrSheet(context, title: '🎉 New Event', builder: (_) => const EventForm());
           }),
       const SizedBox(height: 10),
 
-      _QBtn(icon: Icons.swap_horiz_rounded, label: 'Return Jars',
-          sublabel: 'Collect jars back from customer',
-          color: AppColors.inkMuted, isDark: isDark,
+      _qBtn(icon: Icons.swap_horiz_rounded, label: 'Return Jars',
+          sub: 'Collect back empty', color: AppColors.inkMuted, isDark: isDark,
           onTap: () {
             Navigator.pop(context);
-            showMrSheet(context, title: '📦 Return Jars',
-                builder: (_) => ReturnJarForm());
+            showMrSheet(context, title: '📦 Return Jars', builder: (_) => const ReturnJarForm());
           }),
       const SizedBox(height: 10),
 
-      _QBtn(icon: Icons.payments_rounded, label: 'Record Payment',
-          sublabel: 'Settle dues or add advance',
-          color: okC, isDark: isDark,
+      _qBtn(icon: Icons.payments_rounded, label: 'Record Payment',
+          sub: 'Receive cash/UPI', color: okC, isDark: isDark,
           onTap: () {
             Navigator.pop(context);
-            showMrSheet(context, title: '💰 Record Payment',
-                builder: (_) => PaymentForm());
+            showMrSheet(context, title: '💰 Record Payment', builder: (_) => const PaymentForm());
           }),
       const SizedBox(height: 10),
 
-      _QBtn(icon: Icons.money_off_rounded, label: 'Record Expense',
-          sublabel: 'Log a business expense',
-          color: AppColors.dangerColor(isDark), isDark: isDark,
+      _qBtn(icon: Icons.money_off_rounded, label: 'Record Expense',
+          sub: 'Petrol, repairs, etc', color: AppColors.dangerColor(isDark), isDark: isDark,
           onTap: () {
             Navigator.pop(context);
-            showMrSheet(context, title: '🧾 Record Expense',
-                builder: (_) => const ExpenseForm());
+            showMrSheet(context, title: '💸 Record Expense', builder: (_) => const ExpenseForm());
           }),
     ]);
   }
 
-  Widget _QBtn({required IconData icon, required String label,
-      required String sublabel, required Color color,
-      required bool isDark, required VoidCallback onTap}) =>
-    GestureDetector(onTap: onTap, child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(children: [
-        Container(
-          width: 38, height: 38,
+  Widget _qBtn({required IconData icon, required String label,
+      required String sub, required Color color, required bool isDark,
+      required VoidCallback onTap}) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.15)),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: GoogleFonts.inter(fontSize: 14,
+                  fontWeight: FontWeight.w700, color: color)),
+              Text(sub, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
+            ])),
+            Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color.withValues(alpha: 0.5)),
+          ]),
         ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 14,
-              fontWeight: FontWeight.w700, color: color)),
-          Text(sublabel, style: GoogleFonts.inter(fontSize: 11,
-              color: AppColors.inkMuted)),
-        ])),
-        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: color),
-      ]),
-    ));
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

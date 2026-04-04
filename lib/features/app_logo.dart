@@ -303,7 +303,7 @@ class _LogoPickerState extends ConsumerState<LogoPickerWidget> {
           ),
         ),
         child: Column(children: [
-          AppLogo(height: 72),
+          const AppLogo(height: 72),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
