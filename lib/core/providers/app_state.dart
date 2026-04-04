@@ -390,9 +390,14 @@ class AuditEntry {
   };
 
   factory AuditEntry.fromJson(Map<String, dynamic> j) => AuditEntry(
-    id: j['id'], type: j['type'], description: j['description'],
-    entityId: j['entityId'], before: j['before'] ?? '', after: j['after'] ?? '',
-    performedBy: j['performedBy'], createdAt: j['createdAt'],
+    id:          _asString(j['id'],          fallback: _uuid.v4()),
+    type:        _asString(j['type'],        fallback: 'unknown'),
+    description: _asString(j['description'], fallback: ''),
+    entityId:    _asString(j['entityId'],    fallback: ''),
+    before:      _asString(j['before']),
+    after:       _asString(j['after']),
+    performedBy: _asString(j['performedBy'], fallback: 'Admin'),
+    createdAt:   _asString(j['createdAt'],   fallback: _now()),
   );
 }
 // ══════════════════════════════════════════════════════════════════════════════
@@ -432,12 +437,19 @@ class LedgerEntry {
   };
 
   factory LedgerEntry.fromJson(Map<String, dynamic> j) => LedgerEntry(
-    id: j['id'], customerId: j['customerId'], txId: j['txId'],
-    date: j['date'], createdAt: j['createdAt'], updatedAt: j['updatedAt'],
-    type: j['type'] ?? 'delivery', description: j['description'] ?? '',
-    debit: (j['debit'] ?? 0.0).toDouble(), credit: (j['credit'] ?? 0.0).toDouble(),
-    balance: (j['balance'] ?? 0.0).toDouble(),
-    paymentMode: j['paymentMode'] ?? 'cash', createdBy: j['createdBy'] ?? 'Admin',
+    id:          _asString(j['id'],          fallback: _uuid.v4()),
+    customerId:  _asString(j['customerId'],  fallback: ''),
+    txId:        _asString(j['txId'],        fallback: ''),
+    date:        _asString(j['date'],        fallback: ''),
+    createdAt:   _asString(j['createdAt'],   fallback: _now()),
+    updatedAt:   j['updatedAt']?.toString(),
+    type:        _asString(j['type'],        fallback: 'delivery'),
+    description: _asString(j['description'], fallback: ''),
+    debit:       _asDouble(j['debit']),
+    credit:      _asDouble(j['credit']),
+    balance:     _asDouble(j['balance']),
+    paymentMode: _asString(j['paymentMode'], fallback: 'cash'),
+    createdBy:   _asString(j['createdBy'],   fallback: 'Admin'),
   );
 
   /// Auto-build a LedgerEntry from a JarTransaction + current customer balance.
@@ -1052,7 +1064,9 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
   /// Apply a NEW transaction to a customer's jar counts and balance.
   /// Returns the updated Customer with the exact new balance computed in memory.
   Customer applyTx(JarTransaction tx) {
-    final c = state.firstWhere((c) => c.id == tx.customerId);
+    final cIdx = state.indexWhere((c) => c.id == tx.customerId);
+    if (cIdx == -1) return state.isNotEmpty ? state.first : const Customer(id: '', name: '', phone: '', createdAt: '');
+    final c = state[cIdx];
     final neu = c.copyWith(
       coolOut: (c.coolOut + tx.coolDelivered - tx.coolReturned).clamp(0, 9999),
       petOut:  (c.petOut  + tx.petDelivered  - tx.petReturned ).clamp(0, 9999),
@@ -1065,7 +1079,9 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
   /// Revert a transaction that was previously applied.
   /// Returns the updated Customer.
   Customer revertTx(JarTransaction tx) {
-    final c = state.firstWhere((c) => c.id == tx.customerId);
+    final cIdx = state.indexWhere((c) => c.id == tx.customerId);
+    if (cIdx == -1) return state.isNotEmpty ? state.first : const Customer(id: '', name: '', phone: '', createdAt: '');
+    final c = state[cIdx];
     final neu = c.copyWith(
       coolOut: (c.coolOut - tx.coolDelivered + tx.coolReturned).clamp(0, 9999),
       petOut:  (c.petOut  - tx.petDelivered  + tx.petReturned ).clamp(0, 9999),
@@ -1098,7 +1114,9 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
   }
 
   Customer applyTxEdit(JarTransaction oldTx, JarTransaction newTx) {
-    final c = state.firstWhere((c) => c.id == newTx.customerId);
+    final cIdx = state.indexWhere((c) => c.id == newTx.customerId);
+    if (cIdx == -1) return state.isNotEmpty ? state.first : const Customer(id: '', name: '', phone: '', createdAt: '');
+    final c = state[cIdx];
     final oldNetJarCool = oldTx.coolDelivered - oldTx.coolReturned;
     final newNetJarCool = newTx.coolDelivered - newTx.coolReturned;
     final oldNetJarPet  = oldTx.petDelivered  - oldTx.petReturned;
@@ -1815,11 +1833,14 @@ class StaffMember {
   };
 
   factory StaffMember.fromJson(Map<String, dynamic> j) => StaffMember(
-    id: j['id'], name: j['name'], phone: j['phone'] ?? '',
-    pin: j['pin'], isActive: j['isActive'] ?? true,
+    id:       _asString(j['id'],   fallback: _uuid.v4()),
+    name:     _asString(j['name'], fallback: 'Staff'),
+    phone:    _asString(j['phone']),
+    pin:      _asString(j['pin']),
+    isActive: _asBool(j['isActive'], fallback: true),
     permissions: List<String>.from(j['permissions'] ?? ['dashboard','transactions','customers','inventory','load_unload','payments','notifications']),
-    pinHash: j['pinHash'] ?? '',
-    pinSalt: j['pinSalt'] ?? '',
+    pinHash: _asString(j['pinHash']),
+    pinSalt: _asString(j['pinSalt']),
   );
 }
 
