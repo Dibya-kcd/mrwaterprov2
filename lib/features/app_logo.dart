@@ -110,6 +110,9 @@ class _LogoResolver extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = fullWidth ? double.infinity : height * 1.86;
+    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cacheWidth = w.isFinite ? (w * pixelRatio).round() : null;
+    final cacheHeight = (height * pixelRatio).round();
 
     // ── Priority 1: Network URL ───────────────────────────────────────────────
     if (logoUrl.isNotEmpty && Uri.tryParse(logoUrl)?.hasAbsolutePath == true) {
@@ -119,8 +122,8 @@ class _LogoResolver extends StatelessWidget {
         width: w,
         fit: fit,
         filterQuality: FilterQuality.high,
-        cacheWidth: (w * MediaQuery.of(context).devicePixelRatio).round(),
-        cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
         loadingBuilder: (ctx, child, progress) =>
             progress == null ? child : _placeholder(context, height, w),
         errorBuilder: (ctx, _, __) => _placeholder(context, height, w),
@@ -137,8 +140,8 @@ class _LogoResolver extends StatelessWidget {
           width: w,
           fit: fit,
           filterQuality: FilterQuality.high,
-          cacheWidth: (w * MediaQuery.of(context).devicePixelRatio).round(),
-          cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
+          cacheWidth: cacheWidth,
+          cacheHeight: cacheHeight,
           errorBuilder: (_, __, ___) => _defaultAsset(height, w),
         );
       }
@@ -149,15 +152,20 @@ class _LogoResolver extends StatelessWidget {
   }
 
   Widget _defaultAsset(double h, double w) => Builder(
-    builder: (context) => Image.asset(
-      _kDefaultAsset,
-      height: h,
-      width: w,
-      fit: fit,
-      filterQuality: FilterQuality.high,
-      cacheWidth: (w * MediaQuery.of(context).devicePixelRatio).round(),
-      cacheHeight: (h * MediaQuery.of(context).devicePixelRatio).round(),
-    ),
+    builder: (context) {
+      final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+      final cacheWidth = w.isFinite ? (w * pixelRatio).round() : null;
+      final cacheHeight = (h * pixelRatio).round();
+      return Image.asset(
+        _kDefaultAsset,
+        height: h,
+        width: w,
+        fit: fit,
+        filterQuality: FilterQuality.high,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
+      );
+    },
   );
 
   Widget _placeholder(BuildContext ctx, double h, double w) =>
