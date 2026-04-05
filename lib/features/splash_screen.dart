@@ -113,14 +113,14 @@ class _SplashScreenState extends State<SplashScreen>
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.water_drop_rounded,
                           color: Colors.white,
                           size: 60,
@@ -153,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen>
                               textAlign: TextAlign.center,
                               style: GoogleFonts.inter(
                                 fontSize: 16,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                                 height: 1.5,
                                 fontWeight: FontWeight.w400,
                               ),
@@ -170,7 +170,7 @@ class _SplashScreenState extends State<SplashScreen>
                       width: size.width * 0.8,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: FractionallySizedBox(
@@ -182,7 +182,7 @@ class _SplashScreenState extends State<SplashScreen>
                             borderRadius: BorderRadius.circular(3),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 spreadRadius: 1,
                               ),
@@ -214,11 +214,11 @@ class _GeometricPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
 
     // Large background circle
-    paint.color = Colors.white.withOpacity(0.05);
+    paint.color = Colors.white.withValues(alpha: 0.05);
     canvas.drawCircle(center, 200 * progress, paint);
 
     // Medium circle
-    paint.color = Colors.white.withOpacity(0.08);
+    paint.color = Colors.white.withValues(alpha: 0.08);
     canvas.drawCircle(
       center + const Offset(50, -30),
       120 * progress,
@@ -226,7 +226,7 @@ class _GeometricPainter extends CustomPainter {
     );
 
     // Small accent circle
-    paint.color = Colors.white.withOpacity(0.06);
+    paint.color = Colors.white.withValues(alpha: 0.06);
     canvas.drawCircle(
       center + const Offset(-60, 40),
       80 * progress,
@@ -234,9 +234,9 @@ class _GeometricPainter extends CustomPainter {
     );
 
     // Animated rectangles/lines
-    paint.color = Colors.white.withOpacity(0.1);
+    paint.color = Colors.white.withValues(alpha: 0.1);
     final rectPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withValues(alpha: 0.15)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
