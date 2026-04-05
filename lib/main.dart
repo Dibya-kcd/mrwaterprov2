@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -53,7 +54,16 @@ void main() async {
 
     // Use a try-catch specifically for initialization to provide more context
     try {
-      await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
+      if (FirebaseConfig.isConfigured) {
+        debugPrint('Firebase: Initializing with dart-define options');
+        await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
+      } else if (!kIsWeb) {
+        debugPrint('Firebase: No dart-define config found; attempting native platform initialization');
+        await Firebase.initializeApp();
+      } else {
+        debugPrint('Firebase: Missing web configuration and no native fallback available');
+        throw StateError('Firebase web configuration is missing');
+      }
       debugPrint('Firebase: App initialized successfully');
     } catch (e) {
       debugPrint('Firebase initialization CRITICAL error: $e');

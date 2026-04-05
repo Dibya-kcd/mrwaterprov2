@@ -111,8 +111,8 @@ class _LogoResolver extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = fullWidth ? double.infinity : height * 1.86;
     final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final cacheWidth = w.isFinite ? (w * pixelRatio).round() : null;
-    final cacheHeight = (height * pixelRatio).round();
+    final cacheWidth  = w.isFinite      ? (w      * pixelRatio).round() : null;
+    final cacheHeight = height.isFinite ? (height * pixelRatio).round() : null;
 
     // ── Priority 1: Network URL ───────────────────────────────────────────────
     if (logoUrl.isNotEmpty && Uri.tryParse(logoUrl)?.hasAbsolutePath == true) {
@@ -154,8 +154,8 @@ class _LogoResolver extends StatelessWidget {
   Widget _defaultAsset(double h, double w) => Builder(
     builder: (context) {
       final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-      final cacheWidth = w.isFinite ? (w * pixelRatio).round() : null;
-      final cacheHeight = (h * pixelRatio).round();
+      final cacheWidth  = w.isFinite ? (w * pixelRatio).round() : null;
+      final cacheHeight = h.isFinite ? (h * pixelRatio).round() : null;
       return Image.asset(
         _kDefaultAsset,
         height: h,
