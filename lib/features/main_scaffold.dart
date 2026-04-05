@@ -156,13 +156,13 @@ class _MrAppBar extends ConsumerWidget implements PreferredSizeWidget {
         else
           const SizedBox(width: 16),
 
-        // MIDDLE — MrWater logo, big and prominent
-        Expanded(child: Center(
+        // MIDDLE — Branded AppLogo
+        Expanded(
           child: AppLogo(
-            height: compact ? 70.0 : 86.0,
-            onDark: true,
+            height: compact ? 44.0 : 54.0,
+            fit: BoxFit.contain,
           ),
-        )),
+        ),
 
         // RIGHT — session chip + profile icon
         const SessionChip(),
@@ -371,30 +371,33 @@ class _BurgerDrawer extends ConsumerWidget {
       child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Drawer header
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              primary.withValues(alpha: 0.15),
-              primary.withValues(alpha: 0.04),
-            ], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(children: [
             Container(
-              width: 44, height: 44,
+              width: 48, height: 48,
               decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
               child: Center(child: Text(
                 settings.ownerName.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase(),
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
               )),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              AppLogo(height: 60, onDark: isDark),
+              Row(children: [
+                Icon(Icons.water_drop_rounded, size: 14, color: primary),
+                const SizedBox(width: 4),
+                Text('MrWater', style: GoogleFonts.syne(
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.ink)),
+              ]),
               const SizedBox(height: 2),
               Text(settings.ownerName, style: GoogleFonts.inter(
-                  fontSize: 12, color: AppColors.inkMuted),
+                  fontSize: 12, color: AppColors.inkMuted, fontWeight: FontWeight.w600),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
             ])),
           ]),
@@ -661,21 +664,25 @@ class _Sidebar extends ConsumerWidget {
             color: isDark ? AppColors.separatorDark : AppColors.separator)),
       ),
       child: SafeArea(child: Column(children: [
+        // ── Sidebar Header: Branded Text ─────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+          child: Row(children: [
+            Container(
+              width: 32, height: 32,
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surface2Dark : AppColors.surface2,
-                borderRadius: BorderRadius.circular(12),
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: AppLogo(
-                height: 58,
-                onDark: isDark,
-              ),
+              child: const Icon(Icons.water_drop_rounded, size: 18, color: Colors.white),
             ),
-          ),
+            const SizedBox(width: 12),
+            Text('MrWater', style: GoogleFonts.syne(
+              fontSize: 18, fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              color: isDark ? Colors.white : AppColors.ink,
+            )),
+          ]),
         ),
         Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
         const SizedBox(height: 8),
@@ -691,26 +698,39 @@ class _Sidebar extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: active ? primary.withValues(alpha: 0.10) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: active ? primary.withValues(alpha: 0.15) : Colors.transparent,
+                  ),
                 ),
                 child: Row(children: [
                   Icon(item.icon, size: 18,
                       color: active ? primary : AppColors.inkMuted),
-                  const SizedBox(width: 10),
-                  Text(item.label, style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      color: active ? primary : Theme.of(context).colorScheme.onSurface)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(item.label, style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        color: active ? primary : Theme.of(context).colorScheme.onSurface)),
+                  ),
+                  if (active)
+                    Container(
+                      width: 4, height: 16,
+                      decoration: BoxDecoration(
+                        color: primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                 ]),
               ),
             );
           }).toList(),
         )),
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: GradientButton(label: '⚡ Quick Transaction',
+          padding: const EdgeInsets.all(16),
+          child: GradientButton(label: '⚡ Quick Action',
               onTap: () => showMrSheet(context, title: '⚡ Quick Action',
                   builder: (_) => _QuickSheet(isDark: isDark)),
-              height: 40),
+              height: 44),
         ),
       ])),
     );

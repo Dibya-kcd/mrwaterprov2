@@ -43,13 +43,13 @@ const _kDefaultAsset = 'assets/images/mrwater_logo.png';
 class AppLogo extends ConsumerWidget {
   final double height;
   final BoxFit fit;
-  // onDark kept for drop-in compat with old MrWaterLogo API — ignored
-  // ignore: avoid_unused_constructor_parameters
+  final bool onDark;
+  
   const AppLogo({
     super.key,
     this.height = 60,
     this.fit = BoxFit.contain,
-    bool onDark = true,
+    this.onDark = true,
   });
 
   /// Full-width variant — height auto-calculated from content aspect ratio.
@@ -63,6 +63,7 @@ class AppLogo extends ConsumerWidget {
       logoLocalPath: s.logoLocalPath,
       height: height,
       fit: fit,
+      onDark: onDark,
       businessName: s.appName.isNotEmpty ? s.appName : s.businessName,
     );
   }
@@ -97,6 +98,7 @@ class _LogoResolver extends StatelessWidget {
   final BoxFit fit;
   final String businessName;
   final bool fullWidth;
+  final bool onDark;
 
   const _LogoResolver({
     required this.logoUrl,
@@ -105,6 +107,7 @@ class _LogoResolver extends StatelessWidget {
     required this.fit,
     required this.businessName,
     this.fullWidth = false,
+    this.onDark = true,
   });
 
   @override
@@ -142,31 +145,35 @@ class _LogoResolver extends StatelessWidget {
           filterQuality: FilterQuality.high,
           cacheWidth: cacheWidth,
           cacheHeight: cacheHeight,
-          errorBuilder: (_, __, ___) => _defaultAsset(height, w),
+          errorBuilder: (_, __, ___) => _defaultAsset(context, height, w),
         );
       }
     }
 
     // ── Priority 3: Default asset ─────────────────────────────────────────────
-    return _defaultAsset(height, w);
+    return _defaultAsset(context, height, w);
   }
 
-  Widget _defaultAsset(double h, double w) => Builder(
-    builder: (context) {
-      final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-      final cacheWidth  = w.isFinite ? (w * pixelRatio).round() : null;
-      final cacheHeight = h.isFinite ? (h * pixelRatio).round() : null;
-      return Image.asset(
-        _kDefaultAsset,
-        height: h,
-        width: w,
-        fit: fit,
-        filterQuality: FilterQuality.high,
-        cacheWidth: cacheWidth,
-        cacheHeight: cacheHeight,
-      );
-    },
-  );
+  Widget _defaultAsset(BuildContext context, double h, double w) {
+    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cacheWidth  = w.isFinite ? (w * pixelRatio).round() : null;
+    final cacheHeight = h.isFinite ? (h * pixelRatio).round() : null;
+    
+    // If logo is white asset and on light background, apply color filter
+    final primary = Theme.of(context).colorScheme.primary;
+    final color = onDark ? null : primary;
+    
+    return Image.asset(
+      _kDefaultAsset,
+      height: h,
+      width: w,
+      fit: fit,
+      color: color, // This tints the white logo to the primary color
+      filterQuality: FilterQuality.high,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
+    );
+  }
 
   Widget _placeholder(BuildContext ctx, double h, double w) =>
       _InitialsPlaceholder(name: businessName, height: h, width: w);
