@@ -7,7 +7,7 @@ import '../core/services/company_session.dart';
 import '../core/services/rtdb_user_datasource.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/pin_hash_util.dart';
-import 'mr_water_logo.dart';
+import 'app_logo.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // company_login_screen.dart — HIDDEN admin portal
@@ -584,7 +584,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
             child: Column(children: [
 
               // Logo
-              MrWaterLogo(height: 56, onDark: isDark),
+              AppLogo(height: 56), // ignore: prefer_const_constructors
               const SizedBox(height: 12),
 
               // Subtle portal badge

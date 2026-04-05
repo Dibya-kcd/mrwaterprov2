@@ -9,7 +9,9 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/providers/app_state.dart';
+import 'core/models/staff_member.dart';
+import 'core/providers/settings_provider.dart';
+import 'core/providers/staff_provider.dart';
 import 'core/services/company_session.dart';
 import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
@@ -133,7 +135,7 @@ class ActivityDetector extends StatelessWidget {
 // _AppGate.build() returns SplashScreen directly. When we're done with
 // splash, we just setState(_screen = ...) — no Navigator involved at all.
 // ══════════════════════════════════════════════════════════════════════════════
-enum _Screen { splash, pin, adminPortal, ownerPinVerify, adminPanel, app }
+enum _Screen { splash, pin, adminPortal, adminPanel, app }
 
 class _AppGate extends ConsumerStatefulWidget {
   const _AppGate();
@@ -223,27 +225,6 @@ class _AppGateState extends ConsumerState<_AppGate> {
   // ── Long-press logo → open hidden admin portal ────────────────────────────
   void _onOpenAdminPortal() => _goto(_Screen.adminPortal);
 
-  // ── Owner PIN verified ──────────────────────────────────────────────────
-  void _onOwnerPinVerified(bool isOwner) {
-    if (!mounted) return;
-    if (isOwner) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) _initOwnerSession(user);
-      ref.read(sessionUserProvider.notifier).state = null;
-      ref.read(pinUnlockedProvider.notifier).state = true;
-      // Start inactivity watchdog
-      SessionManager.instance.startWatching(ref);
-      SessionManager.instance.persistUnlocked();
-      _goto(_Screen.adminPanel);
-    } else {
-      // Not owner PIN, show error and go back to PIN
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid owner PIN. Access denied.')),
-      );
-      _goto(_Screen.pin);
-    }
-  }
-
   // ── Admin portal authentication complete ─────────────────────────────────
   void _onAdminAuthenticated({required bool goDirectly}) {
     if (!mounted) return;
@@ -328,13 +309,6 @@ class _AppGateState extends ConsumerState<_AppGate> {
             key: const ValueKey('admin'),
             onAuthenticated: _onAdminAuthenticated,
             onBack: () => _goto(_Screen.pin),
-          ),
-
-        // Owner PIN verification
-        _Screen.ownerPinVerify => PinLockScreen(
-            key: const ValueKey('owner_pin_verify'),
-            onUnlocked: _onOwnerPinVerified,
-            onOpenAdminPortal: null, // Disable hidden portal here
           ),
 
         // Owner admin panel

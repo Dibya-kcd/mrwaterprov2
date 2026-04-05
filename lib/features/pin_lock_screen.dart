@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../core/providers/app_state.dart';
+import '../core/models/staff_member.dart';
+import '../core/providers/staff_provider.dart';
+import '../core/services/rtdb_user_datasource.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/pin_hash_util.dart';
-import 'mr_water_logo.dart';
+import 'app_logo.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PIN LOCK SCREEN  — the initial/home screen of the app
@@ -81,31 +83,23 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
     await Future.delayed(const Duration(milliseconds: 80));
     if (!mounted) return;
 
-    // Exclude the Firebase owner's UID from staff PIN matching.
-    // Owner must use "Login as Owner" button — not the PIN keypad.
-    final ownerUid = FirebaseAuth.instance.currentUser?.uid;
-
     final allStaff = ref.read(staffProvider);
     StaffMember? matched;
 
+    // First check staff PINs
     for (final s in allStaff) {
-      // Skip owner record and inactive staff
-      if (s.id == ownerUid || !s.isActive) continue;
+      if (!s.isActive) continue;
 
       bool pinMatch;
       if (s.hasPinHash) {
-        // ── Secure path: compare against stored SHA-256 hash ──────────────
         pinMatch = PinHashUtil.verify(
           pin: _pin,
           salt: s.pinSalt,
           storedHash: s.pinHash,
         );
       } else {
-        // ── Legacy path: plain-text PIN (old records before hashing was added)
-        // Accept the match, then silently upgrade to hashed PIN in Firebase.
         pinMatch = s.pin == _pin;
         if (pinMatch) {
-          // Upgrade: write hashed version back to Firebase
           final hashed = s.copyWith(
             pinHash: PinHashUtil.hash(pin: _pin, salt: s.id),
             pinSalt: s.id,
@@ -121,10 +115,35 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
       }
     }
 
+    // If no staff match, check owner PIN if Firebase user is authenticated
+    if (matched == null) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        try {
+          final ownerData = await RTDBUserDataSource.instance.getUser(currentUser.uid, currentUser.uid);
+          if (ownerData != null) {
+            final owner = StaffMember.fromJson(ownerData);
+            if (owner.isActive && owner.hasPinHash) {
+              final pinMatch = PinHashUtil.verify(
+                pin: _pin,
+                salt: owner.pinSalt,
+                storedHash: owner.pinHash,
+              );
+              if (pinMatch) {
+                matched = owner;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error checking owner PIN: $e');
+        }
+      }
+    }
+
     if (matched != null) {
       HapticFeedback.lightImpact();
       ref.read(sessionUserProvider.notifier).state = matched;
-      widget.onUnlocked(false);
+      widget.onUnlocked(matched.isOwner);
     } else {
       _wrongPin('Wrong PIN — try again');
     }
@@ -177,7 +196,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
                 GestureDetector(
                   onLongPress: _openAdminPortal,
                   child: Column(children: [
-                    const MrWaterLogoLarge(size: 180),
+                    AppLogo.fullWidth(),
                     const SizedBox(height: 14),
                     Text(
                       staff.isEmpty
