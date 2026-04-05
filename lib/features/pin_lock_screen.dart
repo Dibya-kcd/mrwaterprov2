@@ -187,202 +187,195 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                      // Spacer to push content to center
-                      const Spacer(),
+            final h = constraints.maxHeight;
+            // Scale key size and gaps to available height so nothing overflows
+            final keySize  = (h * 0.10).clamp(52.0, 72.0);
+            final gapLarge = (h * 0.05).clamp(10.0, 40.0);
+            final gapMid   = (h * 0.04).clamp(8.0,  32.0);
+            final gapSmall = (h * 0.015).clamp(6.0,  12.0);
+            final rowGap   = (h * 0.018).clamp(6.0,  12.0);
 
-                      // ── Logo + long-press trigger ────────────────────────────────
-                      GestureDetector(
-                        onLongPress: _openAdminPortal,
-                        child: Column(children: [
-                          AppLogo.fullWidth(),
-                          const SizedBox(height: 14),
-                          Text(
-                            staff.isEmpty
-                                ? 'No staff added yet'
-                                : 'Enter your PIN to continue',
-                            style: GoogleFonts.inter(
-                                fontSize: 13, color: AppColors.inkMuted),
-                          ),
-                          // Hint only when Firebase not authed
-                          if (!isFirebaseAuthed) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'Admin? Hold logo for 2 seconds',
-                              style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppColors.inkMuted.withValues(alpha: 0.55)),
-                            ),
-                          ],
-                        ]),
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: gapSmall),
+
+                // ── Logo + long-press trigger ──────────────────────────────
+                GestureDetector(
+                  onLongPress: _openAdminPortal,
+                  child: Column(children: [
+                    AppLogo.fullWidth(),
+                    SizedBox(height: gapSmall),
+                    Text(
+                      staff.isEmpty
+                          ? 'No staff added yet'
+                          : 'Enter your PIN to continue',
+                      style: GoogleFonts.inter(
+                          fontSize: 13, color: AppColors.inkMuted),
+                    ),
+                    if (!isFirebaseAuthed) ...[
+                      SizedBox(height: gapSmall * 0.5),
+                      Text(
+                        'Admin? Hold logo for 2 seconds',
+                        style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: AppColors.inkMuted.withValues(alpha: 0.55)),
                       ),
-
-                      const SizedBox(height: 40),
-
-                      // ── PIN dots ─────────────────────────────────────────────────
-                      AnimatedBuilder(
-                        animation: _shakeAnim,
-                        builder: (ctx, child) {
-                          final dx = _shake
-                              ? 10 * (_shakeAnim.value < 0.5
-                                  ? -_shakeAnim.value * 2
-                                  : (_shakeAnim.value - 0.5) * 2)
-                              : 0.0;
-                          return Transform.translate(
-                              offset: Offset(dx * 10, 0), child: child);
-                        },
-                        child: Column(children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(4, (i) {
-                              final filled = i < _pin.length;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 140),
-                                margin: const EdgeInsets.symmetric(horizontal: 10),
-                                width: 16, height: 16,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: filled ? primary : Colors.transparent,
-                                  border: Border.all(
-                                    color: _error != null
-                                        ? AppColors.dangerColor(isDark)
-                                        : filled
-                                            ? primary
-                                            : AppColors.inkMuted.withValues(alpha: 0.5),
-                                    width: 2,
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 10),
-                          AnimatedOpacity(
-                            opacity: _error != null ? 1 : 0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Text(_error ?? '',
-                                style: GoogleFonts.inter(
-                                    fontSize: 12, fontWeight: FontWeight.w600,
-                                    color: AppColors.dangerColor(isDark))),
-                          ),
-                        ]),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // ── Keypad ───────────────────────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 48),
-                        child: Column(children: [
-                          for (final row in [
-                            ['1','2','3'],
-                            ['4','5','6'],
-                            ['7','8','9'],
-                            ['','0','⌫'],
-                          ])
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: row.map((k) {
-                                  if (k.isEmpty) return const SizedBox(width: 72, height: 72);
-                                  return _PinKey(
-                                    label: k,
-                                    isDark: isDark,
-                                    primary: primary,
-                                    isDelete: k == '⌫',
-                                    onTap: () => k == '⌫' ? _delete() : _append(k),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                        ]),
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ── Owner login / staff info ─────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(children: [
-
-                          if (isFirebaseAuthed) ...[
-                            // Owner bypass button — only when Firebase authed
-                            GestureDetector(
-                              onTap: _ownerLogin,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: primary.withValues(alpha: 0.07),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                      color: primary.withValues(alpha: 0.22)),
-                                ),
-                                child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                  Icon(Icons.shield_rounded, size: 16, color: primary),
-                                  const SizedBox(width: 8),
-                                  Text('Login as Owner',
-                                      style: GoogleFonts.inter(
-                                          fontSize: 14, fontWeight: FontWeight.w700,
-                                          color: primary)),
-                                ]),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Tap to authenticate as Owner',
-                              style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppColors.inkMuted.withValues(alpha: 0.6)),
-                            ),
-                          ] else ...[
-                            // Not Firebase authed — show staff count hint
-                            if (staff.isNotEmpty)
-                              Text(
-                                '${staff.length} staff member${staff.length > 1 ? 's' : ''} configured',
-                                style: GoogleFonts.inter(
-                                    fontSize: 12, color: AppColors.inkMuted),
-                              ),
-                            if (staff.isEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: primary.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: primary.withValues(alpha: 0.15)),
-                                ),
-                                child: Column(children: [
-                                  Icon(Icons.info_outline_rounded,
-                                      size: 20, color: primary),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No staff added yet.\n'
-                                    'Hold the logo above for 2 seconds to access the admin panel and sign in.',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                        fontSize: 12, color: AppColors.inkMuted,
-                                        height: 1.5),
-                                  ),
-                                ]),
-                              ),
-                          ],
-
-                        ]),
-                      ),
-
-                      // Spacer to push content to center
-                      const Spacer(),
                     ],
-                  ),
+                  ]),
                 ),
-              );
+
+                SizedBox(height: gapLarge),
+
+                // ── PIN dots ───────────────────────────────────────────────
+                AnimatedBuilder(
+                  animation: _shakeAnim,
+                  builder: (ctx, child) {
+                    final dx = _shake
+                        ? 10 * (_shakeAnim.value < 0.5
+                            ? -_shakeAnim.value * 2
+                            : (_shakeAnim.value - 0.5) * 2)
+                        : 0.0;
+                    return Transform.translate(
+                        offset: Offset(dx * 10, 0), child: child);
+                  },
+                  child: Column(children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(4, (i) {
+                        final filled = i < _pin.length;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 140),
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
+                          width: 16, height: 16,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: filled ? primary : Colors.transparent,
+                            border: Border.all(
+                              color: _error != null
+                                  ? AppColors.dangerColor(isDark)
+                                  : filled
+                                      ? primary
+                                      : AppColors.inkMuted.withValues(alpha: 0.5),
+                              width: 2,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    SizedBox(height: gapSmall),
+                    AnimatedOpacity(
+                      opacity: _error != null ? 1 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Text(_error ?? '',
+                          style: GoogleFonts.inter(
+                              fontSize: 12, fontWeight: FontWeight.w600,
+                              color: AppColors.dangerColor(isDark))),
+                    ),
+                  ]),
+                ),
+
+                SizedBox(height: gapMid),
+
+                // ── Keypad ─────────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 48),
+                  child: Column(children: [
+                    for (final row in [
+                      ['1','2','3'],
+                      ['4','5','6'],
+                      ['7','8','9'],
+                      ['','0','⌫'],
+                    ])
+                      Padding(
+                        padding: EdgeInsets.only(bottom: rowGap),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: row.map((k) {
+                            if (k.isEmpty) return SizedBox(width: keySize, height: keySize);
+                            return _PinKey(
+                              label: k,
+                              isDark: isDark,
+                              primary: primary,
+                              isDelete: k == '⌫',
+                              keySize: keySize,
+                              onTap: () => k == '⌫' ? _delete() : _append(k),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                  ]),
+                ),
+
+                SizedBox(height: gapMid),
+
+                // ── Owner login / staff info ───────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(children: [
+                    if (isFirebaseAuthed) ...[
+                      GestureDetector(
+                        onTap: _ownerLogin,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: primary.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: primary.withValues(alpha: 0.22)),
+                          ),
+                          child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                            Icon(Icons.shield_rounded, size: 16, color: primary),
+                            const SizedBox(width: 8),
+                            Text('Login as Owner',
+                                style: GoogleFonts.inter(
+                                    fontSize: 14, fontWeight: FontWeight.w700,
+                                    color: primary)),
+                          ]),
+                        ),
+                      ),
+                      SizedBox(height: gapSmall),
+                      Text(
+                        'Tap to authenticate as Owner',
+                        style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: AppColors.inkMuted.withValues(alpha: 0.6)),
+                      ),
+                    ] else ...[
+                      if (staff.isNotEmpty)
+                        Text(
+                          '${staff.length} staff member${staff.length > 1 ? 's' : ''} configured',
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: AppColors.inkMuted),
+                        ),
+                      if (staff.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: primary.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: primary.withValues(alpha: 0.15)),
+                          ),
+                          child: Column(children: [
+                            Icon(Icons.info_outline_rounded, size: 20, color: primary),
+                            SizedBox(height: gapSmall),
+                            Text(
+                              'No staff added yet.\n'
+                              'Hold the logo above for 2 seconds to access the admin panel and sign in.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                  fontSize: 12, color: AppColors.inkMuted, height: 1.5),
+                            ),
+                          ]),
+                        ),
+                    ],
+                  ]),
+                ),
+
+                SizedBox(height: gapSmall),
+              ],
+            );
           },
         ),
       ),
@@ -395,15 +388,17 @@ class _PinKey extends StatelessWidget {
   final String label;
   final bool isDark, isDelete;
   final Color primary;
+  final double keySize;
   final VoidCallback onTap;
   const _PinKey({required this.label, required this.isDark,
-      required this.primary, required this.isDelete, required this.onTap});
+      required this.primary, required this.isDelete,
+      required this.onTap, this.keySize = 72});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 72, height: 72,
+      width: keySize, height: keySize,
       decoration: BoxDecoration(
         color: isDelete
             ? AppColors.dangerColor(isDark).withValues(alpha: 0.07)
@@ -422,10 +417,10 @@ class _PinKey extends StatelessWidget {
       ),
       child: Center(
         child: isDelete
-            ? Icon(Icons.backspace_outlined, size: 22,
+            ? Icon(Icons.backspace_outlined, size: keySize * 0.30,
                 color: AppColors.dangerColor(isDark))
             : Text(label, style: GoogleFonts.inter(
-                fontSize: 26, fontWeight: FontWeight.w700)),
+                fontSize: keySize * 0.36, fontWeight: FontWeight.w700)),
       ),
     ),
   );
