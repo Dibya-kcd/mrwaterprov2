@@ -1,14 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_role.dart';
 import '../providers/app_state.dart';
-import '../services/firestore_user_datasource.dart';
+import '../services/rtdb_user_datasource.dart';
 import '../utils/pin_hash_util.dart';
 
 class AuthRepository {
   AuthRepository({required this.companyId});
 
   final String companyId;
-  final _datasource = FirestoreUserDataSource.instance;
+  final _datasource = RTDBUserDataSource.instance;
 
   Future<StaffMember> ensureOwnerRecord(User user) async {
     final data = await _datasource.getUser(companyId, user.uid);

@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/services/company_session.dart';
+import '../core/services/rtdb_user_datasource.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/pin_hash_util.dart';
 import 'mr_water_logo.dart';
@@ -287,15 +287,9 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
   }
 
   Future<void> _ensureOwnerRecord(User user) async {
-    final doc = FirebaseFirestore.instance
-        .collection('companies')
-        .doc(user.uid)
-        .collection('users')
-        .doc(user.uid);
-
-    final snapshot = await doc.get();
-    if (!snapshot.exists) {
-      await doc.set({
+    final data = await RTDBUserDataSource.instance.getUser(user.uid, user.uid);
+    if (data == null) {
+      await RTDBUserDataSource.instance.setUser(user.uid, user.uid, {
         'id': user.uid,
         'name': user.displayName ?? user.email ?? 'Owner',
         'email': user.email ?? '',
@@ -315,8 +309,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       return;
     }
 
-    final data = snapshot.data();
-    final hasPin = (data?['pinHash'] as String?)?.isNotEmpty ?? false;
+    final hasPin = (data['pinHash'] as String?)?.isNotEmpty ?? false;
     if (!hasPin) {
       await _promptOwnerPinSetup(user);
     }
@@ -385,12 +378,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
     if (created == true && pinCtrl.text.trim().isNotEmpty) {
       final pin = pinCtrl.text.trim();
       final hash = PinHashUtil.hash(pin: pin, salt: user.uid);
-      await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(user.uid)
-          .collection('users')
-          .doc(user.uid)
-          .update({
+      await RTDBUserDataSource.instance.updateUser(user.uid, user.uid, {
         'pin': '',
         'pinHash': hash,
         'pinSalt': user.uid,

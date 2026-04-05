@@ -1,12 +1,12 @@
 import '../providers/app_state.dart';
-import '../services/firestore_user_datasource.dart';
+import '../services/rtdb_user_datasource.dart';
 import '../utils/pin_hash_util.dart';
 
 class PinRepository {
   PinRepository({required this.companyId});
 
   final String companyId;
-  final _datasource = FirestoreUserDataSource.instance;
+  final _datasource = RTDBUserDataSource.instance;
 
   Future<StaffMember?> verifyPin(String pin, List<StaffMember> users) async {
     for (final user in users) {

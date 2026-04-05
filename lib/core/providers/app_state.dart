@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_role.dart';
 import '../services/company_session.dart';
-import '../services/firestore_user_datasource.dart';
+import '../services/rtdb_user_datasource.dart';
 import '../services/firebase_service.dart';
 import '../services/firebase_config.dart';
 import 'package:uuid/uuid.dart';
@@ -1883,7 +1883,7 @@ class StaffNotifier extends StateNotifier<List<StaffMember>> {
       return;
     }
 
-    _sub = FirestoreUserDataSource.instance
+    _sub = RTDBUserDataSource.instance
         .watchUsers(CompanySession.companyId)
         .listen((documents) {
       if (!mounted) return;
@@ -1894,17 +1894,17 @@ class StaffNotifier extends StateNotifier<List<StaffMember>> {
   void reinit() => _init();
 
   Future<void> add(StaffMember s) async {
-    await FirestoreUserDataSource.instance.setUser(
+    await RTDBUserDataSource.instance.setUser(
         CompanySession.companyId, s.id, s.toJson());
   }
 
   Future<void> update(StaffMember s) async {
-    await FirestoreUserDataSource.instance.updateUser(
+    await RTDBUserDataSource.instance.updateUser(
         CompanySession.companyId, s.id, s.toJson());
   }
 
   Future<void> remove(String id) async {
-    await FirestoreUserDataSource.instance.deleteUser(
+    await RTDBUserDataSource.instance.deleteUser(
         CompanySession.companyId, id);
   }
 
