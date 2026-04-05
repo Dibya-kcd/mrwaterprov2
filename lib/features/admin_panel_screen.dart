@@ -24,61 +24,66 @@ class AdminPanelScreen extends ConsumerWidget {
         title: const Text('Admin Panel'),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Owner tools', style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          Text(
-            'This area is only available to the owner after verifying the owner PIN.',
-            style: GoogleFonts.inter(color: AppColors.inkMuted, height: 1.5),
-          ),
-          const SizedBox(height: 22),
-          _ActionCard(
-            icon: Icons.person_add_rounded,
-            title: 'Create staff PIN',
-            subtitle: 'Add a team member with role and access limits.',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-          ),
-          const SizedBox(height: 14),
-          _ActionCard(
-            icon: Icons.lock_clock_rounded,
-            title: 'Reset owner PIN',
-            subtitle: 'Force the owner to re-enter or change the owner PIN.',
-            onTap: () => _showResetOwnerPin(context),
-          ),
-          const SizedBox(height: 14),
-          _ActionCard(
-            icon: Icons.history_rounded,
-            title: 'View access logs',
-            subtitle: 'Review staff access and PIN unlock events.',
-            onTap: () => _showLogsDialog(context),
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onBack ?? () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Go to App'),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Owner tools', style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            Text(
+              'This area is only available to the owner after verifying the owner PIN.',
+              style: GoogleFonts.inter(color: AppColors.inkMuted, height: 1.5),
             ),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () => _signOut(context, ref),
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Sign out of Firebase'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.dangerColor(false)),
-          ),
-          if (!owner)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                'Warning: this screen is only valid when the app is unlocked as owner.',
-                style: GoogleFonts.inter(color: AppColors.dangerColor(false), fontSize: 12),
+            const SizedBox(height: 22),
+            _ActionCard(
+              icon: Icons.person_add_rounded,
+              title: 'Create staff PIN',
+              subtitle: 'Add a team member with role and access limits.',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            ),
+            const SizedBox(height: 14),
+            _ActionCard(
+              icon: Icons.lock_clock_rounded,
+              title: 'Reset owner PIN',
+              subtitle: 'Force the owner to re-enter or change the owner PIN.',
+              onTap: () => _showResetOwnerPin(context),
+            ),
+            const SizedBox(height: 14),
+            _ActionCard(
+              icon: Icons.history_rounded,
+              title: 'View access logs',
+              subtitle: 'Review staff access and PIN unlock events.',
+              onTap: () => _showLogsDialog(context),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onBack ?? () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: const Text('Go to App'),
               ),
             ),
-        ]),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _signOut(context, ref),
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Sign out of Firebase'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.dangerColor(false)),
+              ),
+            ),
+            if (!owner)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  'Warning: this screen is only valid when the app is unlocked as owner.',
+                  style: GoogleFonts.inter(color: AppColors.dangerColor(false), fontSize: 12),
+                ),
+              ),
+          ]),
+        ),
       ),
     );
   }

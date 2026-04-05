@@ -188,41 +188,31 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final h = constraints.maxHeight;
-            // Scale key size and gaps to available height so nothing overflows
-            final keySize  = (h * 0.10).clamp(52.0, 72.0);
-            final gapLarge = (h * 0.05).clamp(10.0, 40.0);
-            final gapMid   = (h * 0.04).clamp(8.0,  32.0);
-            final gapSmall = (h * 0.015).clamp(6.0,  12.0);
-            final rowGap   = (h * 0.018).clamp(6.0,  12.0);
+            final w = constraints.maxWidth;
+            // Key size driven by BOTH axes so it fits on narrow AND short screens
+            final keySize  = ((h * 0.09).clamp(44.0, 72.0))
+                               .clamp(0.0, (w - 32) / 3 - 8);
+            final hPad     = (w * 0.08).clamp(8.0, 48.0);
+            final logoHeight = (h * 0.18).clamp(60.0, 120.0);
+            final gapLarge = (h * 0.035).clamp(6.0, 32.0);
+            final gapMid   = (h * 0.025).clamp(4.0, 24.0);
+            final gapSmall = (h * 0.010).clamp(3.0, 10.0);
+            final rowGap   = (h * 0.014).clamp(4.0, 12.0);
 
-            return Column(
+            return ClipRect(child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: w,
+                child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(height: gapSmall),
 
                 // ── Logo + long-press trigger ──────────────────────────────
                 GestureDetector(
                   onLongPress: _openAdminPortal,
-                  child: Column(children: [
-                    AppLogo.fullWidth(),
-                    SizedBox(height: gapSmall),
-                    Text(
-                      staff.isEmpty
-                          ? 'No staff added yet'
-                          : 'Enter your PIN to continue',
-                      style: GoogleFonts.inter(
-                          fontSize: 13, color: AppColors.inkMuted),
-                    ),
-                    if (!isFirebaseAuthed) ...[
-                      SizedBox(height: gapSmall * 0.5),
-                      Text(
-                        'Admin? Hold logo for 2 seconds',
-                        style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: AppColors.inkMuted.withValues(alpha: 0.55)),
-                      ),
-                    ],
-                  ]),
+                  child: AppLogo(height: logoHeight),
                 ),
 
                 SizedBox(height: gapLarge),
@@ -239,7 +229,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
                     return Transform.translate(
                         offset: Offset(dx * 10, 0), child: child);
                   },
-                  child: Column(children: [
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(4, (i) {
@@ -279,7 +269,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
 
                 // ── Keypad ─────────────────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48),
+                  padding: EdgeInsets.symmetric(horizontal: hPad),
                   child: Column(children: [
                     for (final row in [
                       ['1','2','3'],
@@ -375,7 +365,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
 
                 SizedBox(height: gapSmall),
               ],
-            );
+            ))));
           },
         ),
       ),
