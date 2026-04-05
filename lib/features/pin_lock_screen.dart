@@ -187,13 +187,12 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+            return ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                       // Spacer to push content to center
                       const Spacer(),
 
@@ -383,8 +382,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
                     ],
                   ),
                 ),
-              ),
-            );
+              );
           },
         ),
       ),
