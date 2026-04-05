@@ -183,7 +183,6 @@ class _AppGateState extends ConsumerState<_AppGate> {
     final minSplash = Future.delayed(const Duration(seconds: 3));
 
     // Wait for BOTH: auth resolved AND splash finished
-    final validSession = await SessionManager.instance.isSessionStillValid();
     final results = await Future.wait([
       authFuture,
       Future.any([_splashCompleter.future, Future.delayed(const Duration(seconds: 6))]),
@@ -195,18 +194,9 @@ class _AppGateState extends ConsumerState<_AppGate> {
     final user = results[0] as User?;
     debugPrint('Startup complete — user: ${user?.email ?? "none"}');
 
-    if (user != null) {
-      _initOwnerSession(user);
-      if (validSession) {
-        ref.read(pinUnlockedProvider.notifier).state = true;
-        SessionManager.instance.startWatching(ref);
-        _goto(_Screen.app);
-      } else {
-        _goto(_Screen.pin);
-      }
-    } else {
-      _goto(_Screen.pin);
-    }
+    // Always go to PIN screen for authentication
+    // Owner must always provide fresh credentials, never auto-login based on Firebase session
+    _goto(_Screen.pin);
   }
 
   // ── Safe setState ─────────────────────────────────────────────────────────
@@ -233,16 +223,6 @@ class _AppGateState extends ConsumerState<_AppGate> {
   // ── Long-press logo → open hidden admin portal ────────────────────────────
   void _onOpenAdminPortal() => _goto(_Screen.adminPortal);
 
-  // ── Admin portal authentication complete ─────────────────────────────────
-  void _onAdminAuthenticated({required bool goDirectly}) {
-    if (!mounted) return;
-    if (goDirectly) {
-      _goto(_Screen.ownerPinVerify);
-    } else {
-      _goto(_Screen.pin);
-    }
-  }
-
   // ── Owner PIN verified ──────────────────────────────────────────────────
   void _onOwnerPinVerified(bool isOwner) {
     if (!mounted) return;
@@ -261,6 +241,23 @@ class _AppGateState extends ConsumerState<_AppGate> {
         const SnackBar(content: Text('Invalid owner PIN. Access denied.')),
       );
       _goto(_Screen.pin);
+    }
+  }
+
+  // ── Admin portal authentication complete ─────────────────────────────────
+  void _onAdminAuthenticated({required bool goDirectly}) {
+    if (!mounted) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) _initOwnerSession(user);
+    ref.read(sessionUserProvider.notifier).state = null;
+    ref.read(pinUnlockedProvider.notifier).state = true;
+    // Start inactivity watchdog
+    SessionManager.instance.startWatching(ref);
+    SessionManager.instance.persistUnlocked();
+    if (goDirectly) {
+      _goto(_Screen.adminPanel);
+    } else {
+      _goto(_Screen.app);
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ import 'mr_water_logo.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════════════════════
-enum _View { signIn, signUp, forgotPw }
+enum _View { signIn, signUp, forgotPw, verifyEmail }
 
 class CompanyLoginScreen extends StatefulWidget {
   /// goDirectly=true  → owner enters app directly (skip PIN)
@@ -49,6 +50,8 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
   bool    _obscure = true;
   String? _error;
   String? _info;
+  String? _verifyEmail;  // Email being verified
+  Timer?  _verifyTimer;  // Auto-check timer
 
   final _emailCtrl = TextEditingController();
   final _pwCtrl    = TextEditingController();
@@ -66,7 +69,6 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
         duration: const Duration(milliseconds: 320));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
-    _tryAutoLogin();
   }
 
   @override
@@ -74,21 +76,12 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
     _emailCtrl.dispose(); _pwCtrl.dispose();
     _pw2Ctrl.dispose();   _bizCtrl.dispose();
     _fadeCtrl.dispose();
+    _verifyTimer?.cancel();
     super.dispose();
   }
 
-  // ── Auto-login if Firebase session still alive ────────────────────────────
-  Future<void> _tryAutoLogin() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    CompanySession.init(user.uid, name: user.displayName ?? user.email ?? '');
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showSuccess();
-      });
-    }
-  }
+  // ── No auto-login — Owner must always provide fresh credentials ───────────────────────────
+  // Removed auto-login logic to enforce fresh authentication for Owner access
 
   // ── Switch between form views ─────────────────────────────────────────────
   void _switchView(_View v) {
@@ -142,11 +135,114 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       if (mounted) {
         setState(() {
           _loading = false;
-          _view = _View.signIn;
-          _info = 'Account created. Verification email sent to ${c.user!.email ?? _emailCtrl.text.trim()}. Confirm your email before signing in.';
+          _view = _View.verifyEmail;
+          _verifyEmail = c.user!.email;
+          _error = null;
+          _info = null;
         });
+        _startVerificationCheck();
       }
     } on FirebaseAuthException catch (e) { _fail(e.code); }
+  }
+
+  void _startVerificationCheck() {
+    _verifyTimer?.cancel();
+    _verifyTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (_verifyEmail == null) return;
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await user.reload();
+          if (user.emailVerified) {
+            _verifyTimer?.cancel();
+            if (mounted) {
+              setState(() => _loading = true);
+              await Future.delayed(const Duration(milliseconds: 500));
+              if (mounted) {
+                _showVerificationSuccess();
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Email verification check error: $e');
+      }
+    });
+  }
+
+  Future<void> _manualVerificationCheck() async {
+    if (_verifyEmail == null) return;
+    setState(() => _loading = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        if (user.emailVerified) {
+          _verifyTimer?.cancel();
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted) _showVerificationSuccess();
+        } else {
+          setState(() {
+            _loading = false;
+            _error = 'Email not verified yet. Please check your inbox.';
+          });
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = 'Error checking verification status. Please try again.';
+      });
+    }
+  }
+
+  void _showVerificationSuccess() {
+    _verifyTimer?.cancel();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final okC = AppColors.successColor(isDark);
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(color: okC.withValues(alpha: 0.12), shape: BoxShape.circle),
+            child: Icon(Icons.check_circle_rounded, size: 36, color: okC),
+          ),
+          const SizedBox(height: 16),
+          Text('Email Verified!',
+              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text('Your account is ready. You can now sign in.',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted, height: 1.4),
+              textAlign: TextAlign.center),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (mounted) {
+                setState(() {
+                  _view = _View.signIn;
+                  _loading = false;
+                  _verifyEmail = null;
+                  _emailCtrl.clear();
+                  _pwCtrl.clear();
+                  _pw2Ctrl.clear();
+                  _bizCtrl.clear();
+                });
+              }
+            },
+            child: Text('Go to Sign In',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: okC)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showForgotUsernameHelp() {
@@ -558,7 +654,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
                             color: primary)),
                   ])),
                 )
-              else
+              else if (_view != _View.verifyEmail)
                 GestureDetector(
                   onTap: () => _switchView(_View.signIn),
                   child: Text('← Back to Sign In',
@@ -589,8 +685,46 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
           fontSize: 13, color: AppColors.inkMuted)),
       const SizedBox(height: 24),
 
-      // Business name — sign up only
-      if (_view == _View.signUp) ...[
+      // Email verification waiting state
+      if (_view == _View.verifyEmail) ...[  Text('Verification email sent to:', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: primary.withValues(alpha: 0.15)),
+          ),
+          child: Text(_verifyEmail ?? '', style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: primary.withValues(alpha: 0.16)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.info_outline_rounded, size: 16, color: primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text(
+                'We\'re automatically checking for verification. This usually takes seconds.',
+                style: GoogleFonts.inter(fontSize: 12, color: primary, height: 1.4),
+              )),
+            ]),
+            const SizedBox(height: 10),
+            Text('If you don\'t receive the email, check your spam folder or request a new verification link.',
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted, height: 1.4)),
+          ]),
+        ),
+        const SizedBox(height: 16),
+      ] else ...[  
+
+        // Business name — sign up only
+        if (_view == _View.signUp) ...[
         _lbl('Business Name'),
         _TF(ctrl: _bizCtrl, hint: 'My Water Supply Co.',
             icon: Icons.business_rounded,
@@ -634,6 +768,7 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
                 v?.isEmpty == true ? 'Confirm your password' : null),
         const SizedBox(height: 16),
       ],
+      ],  // Close else spread for non-verifyEmail views
 
       // Error / success banner
       if (_error != null) ...[
@@ -709,24 +844,28 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
   );
 
   String get _title => switch (_view) {
-    _View.signIn   => 'Welcome back',
-    _View.signUp   => 'Create account',
-    _View.forgotPw => 'Reset password',
+    _View.signIn    => 'Welcome back',
+    _View.signUp    => 'Create account',
+    _View.forgotPw  => 'Reset password',
+    _View.verifyEmail => 'Verify Your Email',
   };
   String get _subtitle => switch (_view) {
-    _View.signIn   => 'Sign in to your business account',
-    _View.signUp   => 'Register your water delivery business',
-    _View.forgotPw => 'We\'ll email you a reset link',
+    _View.signIn    => 'Sign in to your business account',
+    _View.signUp    => 'Register your water delivery business',
+    _View.forgotPw  => 'We\'ll email you a reset link',
+    _View.verifyEmail => 'Check your inbox for a verification link',
   };
   String get _btnLabel => switch (_view) {
-    _View.signIn   => 'Sign In',
-    _View.signUp   => 'Create Account',
-    _View.forgotPw => 'Send Reset Link',
+    _View.signIn    => 'Sign In',
+    _View.signUp    => 'Create Account',
+    _View.forgotPw  => 'Send Reset Link',
+    _View.verifyEmail => 'I\'ve Verified My Email',
   };
   VoidCallback get _action => switch (_view) {
-    _View.signIn   => _signIn,
-    _View.signUp   => _signUp,
-    _View.forgotPw => _sendReset,
+    _View.signIn    => _signIn,
+    _View.signUp    => _signUp,
+    _View.forgotPw  => _sendReset,
+    _View.verifyEmail => _manualVerificationCheck,
   };
 }
 

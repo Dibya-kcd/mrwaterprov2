@@ -138,54 +138,12 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
     });
   }
 
-  // ── Owner bypass — requires PIN confirmation ─────────────────────────────
-  // Owner must enter their PIN to confirm identity before getting full access.
-  // This sets sessionUser = null (owner = unrestricted) — NOT a staff record.
-  void _ownerBypass() {
+  // ── Owner login — requires fresh email/password authentication ─────────────────────────────
+  // Owner must always provide fresh credentials, never auto-login based on Firebase session
+  void _ownerLogin() {
     if (!mounted) return;
-    final ownerUid = FirebaseAuth.instance.currentUser?.uid;
-    if (ownerUid == null) return;
-
-    // Find owner's staff record to get their PIN / hash
-    final ownerRecord = ref.read(staffProvider)
-        .cast<StaffMember?>()
-        .firstWhere((s) => s?.id == ownerUid, orElse: () => null);
-
-    if (ownerRecord != null && ownerRecord.pin.isNotEmpty &&
-        ownerRecord.pin != '0000') {
-      bool pinMatch;
-
-      if (ownerRecord.hasPinHash) {
-        // ── Secure: verify against hash ──────────────────────────────────
-        pinMatch = PinHashUtil.verify(
-          pin: _pin,
-          salt: ownerRecord.pinSalt,
-          storedHash: ownerRecord.pinHash,
-        );
-      } else {
-        // ── Legacy: plain-text compare, then silently upgrade ────────────
-        pinMatch = _pin == ownerRecord.pin;
-        if (pinMatch) {
-          final hashed = ownerRecord.copyWith(
-            pinHash: PinHashUtil.hash(pin: _pin, salt: ownerRecord.id),
-            pinSalt: ownerRecord.id,
-          );
-          ref.read(staffProvider.notifier).update(hashed);
-          debugPrint('[PinLock] Upgraded owner to hashed PIN');
-        }
-      }
-
-      if (!pinMatch) {
-        if (_pin.length == 4) _wrongPin('Incorrect owner PIN');
-        return;
-      }
-    }
-
-    // PIN matches (or owner hasn't changed default) → grant full owner access
-    HapticFeedback.lightImpact();
-    // sessionUser = null means OWNER → StaffGuard gives unrestricted access
-    ref.read(sessionUserProvider.notifier).state = null;
-    widget.onUnlocked(true);
+    // Open the admin portal for fresh email/password login
+    widget.onOpenAdminPortal?.call();
   }
 
   // ── Hidden admin portal — long press logo ─────────────────────────────────
@@ -332,7 +290,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
                     if (isFirebaseAuthed) ...[
                       // Owner bypass button — only when Firebase authed
                       GestureDetector(
-                        onTap: _ownerBypass,
+                        onTap: _ownerLogin,
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -355,7 +313,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Signed in as ${FirebaseAuth.instance.currentUser?.email ?? "owner"}',
+                        'Tap to authenticate as Owner',
                         style: GoogleFonts.inter(
                             fontSize: 11,
                             color: AppColors.inkMuted.withValues(alpha: 0.6)),
