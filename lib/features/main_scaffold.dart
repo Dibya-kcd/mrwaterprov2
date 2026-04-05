@@ -280,13 +280,12 @@ class _ProfileSheet extends ConsumerWidget {
       const SizedBox(height: 10),
       TextButton(
         onPressed: () {
-          Navigator.pop(context); // Close the sheet
+          if (Navigator.canPop(context)) Navigator.pop(context);
           // ── ROLE logout only — Firebase stays signed in ──────────────────
           // Firebase sign-out is ONLY available from the hidden admin portal.
           // In-app logout just clears the role session and returns to PIN.
           ref.read(sessionUserProvider.notifier).state = null;
           ref.read(pinUnlockedProvider.notifier).state = false;
-          // _AppGate watches pinUnlockedProvider and switches to _Screen.pin
         },
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.switch_account_rounded, size: 16, color: AppColors.inkMuted),

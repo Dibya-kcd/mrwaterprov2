@@ -127,13 +127,9 @@ class ActivityDetector extends StatelessWidget {
 // NO Navigator.push anywhere. No bridge widgets. No race conditions.
 //
 // STARTUP SEQUENCE:
-//   1. Show SplashScreen (as a direct widget, not a pushed route)
-//   2. In initState: run splash timer + wait for Firebase auth in parallel
-//   3. When BOTH complete → decide: app (if authed) or PIN (if not)
-//
-// KEY INSIGHT: SplashScreen is shown as widget content, not as a route.
-// _AppGate.build() returns SplashScreen directly. When we're done with
-// splash, we just setState(_screen = ...) — no Navigator involved at all.
+//   1. Initialize Firebase and auth state
+//   2. Show PIN screen immediately
+//   3. Owner / staff login begins without splash animation
 // ══════════════════════════════════════════════════════════════════════════════
 enum _Screen { splash, pin, adminPortal, adminPanel, app }
 
@@ -160,44 +156,33 @@ class _AppGateState extends ConsumerState<_AppGate> {
         const AssetImage('assets/images/mrwater_logo.png'), context);
   }
 
-  // Completer that resolves when the splash video finishes
+  // Completer that resolves when the splash animation finishes
   final Completer<void> _splashCompleter = Completer<void>();
 
-  // ── Called by SplashScreen when video ends ────────────────────────────────
+  // ── Called by SplashScreen when animation ends ───────────────────────────
   void _onSplashVideoEnded() {
     if (!_splashCompleter.isCompleted) _splashCompleter.complete();
   }
 
-  // ── Startup: wait for video AND Firebase auth in parallel ─────────────────
+  // ── Startup: wait for auth and the splash animation in parallel ────────
   Future<void> _startupSequence() async {
-    // Wait for Firebase Auth to emit its first event.
-    // On web, currentUser is null synchronously right after initializeApp()
-    // because the persisted session is restored from IndexedDB asynchronously.
-    // We MUST await authStateChanges().first — never use currentUser directly.
     final authFuture = FirebaseAuth.instance
         .authStateChanges()
         .first
         .timeout(const Duration(seconds: 8), onTimeout: () => null)
         .catchError((_) => null);
 
-    // Wait for the splash video to finish (video fires _onSplashVideoEnded)
-    // Also enforce a minimum splash time as safety
-    final minSplash = Future.delayed(const Duration(seconds: 3));
+    final minSplash = Future.delayed(const Duration(seconds: 2));
 
-    // Wait for BOTH: auth resolved AND splash finished
     final results = await Future.wait([
       authFuture,
-      Future.any([_splashCompleter.future, Future.delayed(const Duration(seconds: 6))]),
+      Future.any([_splashCompleter.future, Future.delayed(const Duration(seconds: 4))]),
       minSplash,
     ]);
 
     if (!mounted) return;
-
     final user = results[0] as User?;
     debugPrint('Startup complete — user: ${user?.email ?? "none"}');
-
-    // Always go to PIN screen for authentication
-    // Owner must always provide fresh credentials, never auto-login based on Firebase session
     _goto(_Screen.pin);
   }
 
@@ -284,20 +269,16 @@ class _AppGateState extends ConsumerState<_AppGate> {
     }
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
+      duration: Duration.zero,
       child: switch (_screen) {
 
-        // Splash — shown as a direct widget, not a pushed route.
-        // onComplete fires when the video finishes → _onSplashVideoEnded.
-        // _startupSequence runs in parallel waiting for Firebase auth.
-        // The screen only transitions once BOTH are done.
-        _Screen.splash => SplashScreen(
-            key: const ValueKey('splash'),
-            nextScreen: const SizedBox.shrink(), // unused when onComplete set
-            onComplete: _onSplashVideoEnded,
-          ),
 
         // PIN screen
+        _Screen.splash => SplashScreen(
+            key: const ValueKey('splash'),
+            nextScreen: const SizedBox.shrink(),
+            onComplete: _onSplashVideoEnded,
+          ),
         _Screen.pin => PinLockScreen(
             key: const ValueKey('pin'),
             onUnlocked:        _onPinUnlocked,

@@ -37,24 +37,42 @@ jobs:
             echo "ERROR: FIREBASE_API_KEY is missing! Add it in repo Settings -> Secrets -> Actions"
             exit 1
           fi
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "ERROR: FIREBASE_AUTH_DOMAIN is missing! Add it in repo Settings -> Secrets -> Actions"
+            exit 1
+          fi
           if [ -z "${{ secrets.FIREBASE_DATABASE_URL }}" ]; then
             echo "ERROR: FIREBASE_DATABASE_URL is missing! Add it in repo Settings -> Secrets -> Actions"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "ERROR: FIREBASE_PROJECT_ID is missing! Add it in repo Settings -> Secrets -> Actions"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_STORAGE_BUCKET }}" ]; then
+            echo "ERROR: FIREBASE_STORAGE_BUCKET is missing! Add it in repo Settings -> Secrets -> Actions"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" ]; then
+            echo "ERROR: FIREBASE_MESSAGING_SENDER_ID is missing! Add it in repo Settings -> Secrets -> Actions"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_APP_ID_WEB }}" ]; then
+            echo "ERROR: FIREBASE_APP_ID_WEB is missing! Add it in repo Settings -> Secrets -> Actions"
             exit 1
           fi
           echo "Secrets verified OK"
 
       - name: Build Web
         run: |
-          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_API_KEY_ANDROID":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
+          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s"}' \
             "${{ secrets.FIREBASE_API_KEY }}" \
-            "${{ secrets.FIREBASE_API_KEY_ANDROID }}" \
             "${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
             "${{ secrets.FIREBASE_DATABASE_URL }}" \
             "${{ secrets.FIREBASE_PROJECT_ID }}" \
             "${{ secrets.FIREBASE_STORAGE_BUCKET }}" \
             "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" \
             "${{ secrets.FIREBASE_APP_ID_WEB }}" \
-            "${{ secrets.FIREBASE_APP_ID_ANDROID }}" \
             > dart_defines.json
           cat dart_defines.json | python3 -m json.tool > /dev/null && echo "JSON valid" || (echo "JSON invalid!" && exit 1)
           flutter build web --release --base-href "/mrwaterprov2/" --dart-define-from-file=dart_defines.json
@@ -116,15 +134,33 @@ jobs:
             echo "ERROR: FIREBASE_API_KEY is missing!"
             exit 1
           fi
-          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_API_KEY_ANDROID":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_WEB":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
+          if [ -z "${{ secrets.FIREBASE_DATABASE_URL }}" ]; then
+            echo "ERROR: FIREBASE_DATABASE_URL is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "ERROR: FIREBASE_PROJECT_ID is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_STORAGE_BUCKET }}" ]; then
+            echo "ERROR: FIREBASE_STORAGE_BUCKET is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" ]; then
+            echo "ERROR: FIREBASE_MESSAGING_SENDER_ID is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FIREBASE_APP_ID_ANDROID }}" ]; then
+            echo "ERROR: FIREBASE_APP_ID_ANDROID is missing!"
+            exit 1
+          fi
+          printf '{"FIREBASE_API_KEY":"%s","FIREBASE_AUTH_DOMAIN":"%s","FIREBASE_DATABASE_URL":"%s","FIREBASE_PROJECT_ID":"%s","FIREBASE_STORAGE_BUCKET":"%s","FIREBASE_MESSAGING_SENDER_ID":"%s","FIREBASE_APP_ID_ANDROID":"%s"}' \
             "${{ secrets.FIREBASE_API_KEY }}" \
-            "${{ secrets.FIREBASE_API_KEY_ANDROID }}" \
             "${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
             "${{ secrets.FIREBASE_DATABASE_URL }}" \
             "${{ secrets.FIREBASE_PROJECT_ID }}" \
             "${{ secrets.FIREBASE_STORAGE_BUCKET }}" \
             "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" \
-            "${{ secrets.FIREBASE_APP_ID_WEB }}" \
             "${{ secrets.FIREBASE_APP_ID_ANDROID }}" \
             > dart_defines.json
           cat dart_defines.json | python3 -m json.tool > /dev/null && echo "JSON valid" || (echo "JSON invalid!" && exit 1)
