@@ -25,21 +25,21 @@
         // ── Staff ──────────────────────────────────────────────────────────
         "staff": {
           "$staffId": {
-            ".validate": "newData.hasChildren(['id', 'name', 'pin', 'isActive']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id', 'name', 'pin', 'isActive']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Customers ──────────────────────────────────────────────────────
         "customers": {
           "$customerId": {
-            ".validate": "newData.hasChildren(['id', 'name', 'phone', 'createdAt']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id', 'name', 'phone', 'createdAt']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Transactions ───────────────────────────────────────────────────
         "transactions": {
           "$txId": {
-            ".validate": "newData.hasChildren(['id','customerId','customerName','date','createdAt','billedAmount']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','customerId','customerName','date','createdAt','billedAmount']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
@@ -54,63 +54,63 @@
         // ── Expenses ───────────────────────────────────────────────────────
         "expenses": {
           "$expenseId": {
-            ".validate": "newData.hasChildren(['id','amount','category','date']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','amount','category','date']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Load / Unload Trips ───────────────────────────────────────────
         "load_unload": {
           "$tripId": {
-            ".validate": "newData.hasChildren(['id','date','coolLoaded','petLoaded']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','date','coolLoaded','petLoaded']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Audit Log ──────────────────────────────────────────────────────
         "auditLog": {
           "$auditId": {
-            ".validate": "newData.hasChildren(['id','type','description','performedBy','createdAt']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','type','description','performedBy','createdAt']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Areas ──────────────────────────────────────────────────────────
         "areas": {
           "$areaId": {
-            ".validate": "newData.hasChildren(['id','name']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','name']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Vehicles ───────────────────────────────────────────────────────
         "vehicles": {
           "$vehicleId": {
-            ".validate": "newData.hasChildren(['id','name','number']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','name','number']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Ledger Entries ─────────────────────────────────────────────────
         "ledgerEntries": {
           "$entryId": {
-            ".validate": "newData.hasChildren(['id','customerId','txId','date','type','debit','credit','balance']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['id','customerId','txId','date','type','debit','credit','balance']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Transaction Revisions ─────────────────────────────────────────
         "transactionRevisions": {
           "$revId": {
-            ".validate": "newData.hasChildren(['revId','txId','revNumber','createdAt','editedBy']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['revId','txId','revNumber','createdAt','editedBy']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Inventory Movements ────────────────────────────────────────────
         "inventoryMovements": {
           "$invId": {
-            ".validate": "newData.hasChildren(['invId','type','coolDelta','petDelta','createdAt']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['invId','type','coolDelta','petDelta','createdAt']) || newData.hasChild('diag') || !newData.exists()"
           }
         },
 
         // ── Payments ───────────────────────────────────────────────────────
         "payments": {
           "$paymentId": {
-            ".validate": "newData.hasChildren(['paymentId','txId','customerId','amount','mode','date','type']) || newData.hasChild('diag')"
+            ".validate": "newData.hasChildren(['paymentId','txId','customerId','amount','mode','date','type']) || newData.hasChild('diag') || !newData.exists()"
           }
         }
       }
