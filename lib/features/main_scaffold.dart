@@ -665,9 +665,16 @@ class _Sidebar extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
           child: Center(
-            child: AppLogo(
-              height: 58,
-              onDark: isDark,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface2Dark : AppColors.surface2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: AppLogo(
+                height: 58,
+                onDark: isDark,
+              ),
             ),
           ),
         ),

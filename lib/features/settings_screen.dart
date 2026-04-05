@@ -1099,18 +1099,35 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
   bool _showPin = false;
 
   // Full feature list — id must match StaffGuard permission keys in main_scaffold
-  static const _allPerms = <(String, String, String)>[
-    ('dashboard',     '🏠 Dashboard',        'Home overview, KPIs and quick stats'),
-    ('transactions',  '🚚 Transactions',      'Add daily deliveries and payments'),
-    ('customers',     '👤 Customers',         'View, add and manage customers'),
-    ('inventory',     '📦 Inventory',         'View current stock levels'),
-    ('load_unload',   '🔄 Load / Unload',     'Warehouse jar in/out movements'),
-    ('payments',      '💳 Payments',          'View and record dues & advances'),
-    ('expenses',      '💸 Expenses',          'View and add business expenses'),
-    ('reports',       '📊 Reports',           'Generate and export reports'),
-    ('notifications', '🔔 Notifications',     'View delivery alerts and reminders'),
-    ('smart_entry',   '📷 Smart Entry',       'OCR photo scan for bulk entry'),
-    ('settings',      '⚙️ Settings',          'App settings and staff management'),
+  static const _allPerms = <(String, String, String, List<(String, String, String)>?)>[
+    ('dashboard',     '🏠 Dashboard',        'Home overview, KPIs and quick stats', null),
+    ('transactions',  '🚚 Transactions',      'Add daily deliveries and payments', [
+      ('transactions_add', 'Add Transactions', 'Create new deliveries and payments'),
+      ('transactions_edit', 'Edit Transactions', 'Modify existing transactions'),
+      ('transactions_voice', 'Voice Assistant', 'Use voice commands for transactions'),
+    ]),
+    ('customers',     '👤 Customers',         'View, add and manage customers', [
+      ('customers_add', 'Add Customers', 'Create new customer profiles'),
+      ('customers_edit', 'Edit Customers', 'Modify customer information'),
+      ('customers_delete', 'Delete Customers', 'Remove customer profiles'),
+    ]),
+    ('inventory',     '📦 Inventory',         'View current stock levels', null),
+    ('load_unload',   '🔄 Load / Unload',     'Warehouse jar in/out movements', [
+      ('load_unload_add', 'Add Movements', 'Record jar load/unload operations'),
+      ('load_unload_edit', 'Edit Movements', 'Modify existing movements'),
+    ]),
+    ('payments',      '💳 Payments',          'View and record dues & advances', [
+      ('payments_record', 'Record Payments', 'Add new payment entries'),
+      ('payments_edit', 'Edit Payments', 'Modify payment records'),
+    ]),
+    ('expenses',      '💸 Expenses',          'View and add business expenses', [
+      ('expenses_add', 'Add Expenses', 'Create new expense entries'),
+      ('expenses_edit', 'Edit Expenses', 'Modify expense records'),
+    ]),
+    ('reports',       '📊 Reports',           'Generate and export reports', null),
+    ('notifications', '🔔 Notifications',     'View delivery alerts and reminders', null),
+    ('smart_entry',   '📷 Smart Entry',       'OCR photo scan for bulk entry', null),
+    ('settings',      '⚙️ Settings',          'App settings and staff management', null),
   ];
 
   @override
@@ -1130,7 +1147,7 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
       }
       _perms.addAll(e.permissions);
     } else {
-      _perms.addAll(['dashboard', 'transactions', 'customers', 'load_unload']);
+      _perms.addAll(['dashboard', 'transactions', 'transactions_add', 'transactions_voice', 'customers', 'customers_add', 'load_unload', 'load_unload_add']);
     }
   }
 
@@ -1194,36 +1211,78 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
       const FieldLabel('Permissions'),
       const SizedBox(height: 8),
       ..._allPerms.map((rec) {
-        final (id, label, desc) = rec;
+        final (id, label, desc, subPerms) = rec;
         final on = _perms.contains(id);
-        return GestureDetector(
-          onTap: () => setState(() => on ? _perms.remove(id) : _perms.add(id)),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: on ? primary.withValues(alpha: 0.08) : (isDark ? AppColors.surface2Dark : AppColors.surface2),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: on ? primary : (isDark ? AppColors.separatorDark : AppColors.separator),
-                width: on ? 1.5 : 1,
+        return Column(children: [
+          GestureDetector(
+            onTap: () => setState(() => on ? _perms.remove(id) : _perms.add(id)),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: on ? primary.withValues(alpha: 0.08) : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: on ? primary : (isDark ? AppColors.separatorDark : AppColors.separator),
+                  width: on ? 1.5 : 1,
+                ),
               ),
+              child: Row(children: [
+                Text(label.split(' ').first, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(label.split(' ').skip(1).join(' '),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700,
+                          color: on ? primary : Theme.of(context).colorScheme.onSurface)),
+                  Text(desc, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
+                ])),
+                Icon(on ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    size: 20, color: on ? primary : AppColors.inkMuted),
+              ]),
             ),
-            child: Row(children: [
-              Text(label.split(' ').first, style: const TextStyle(fontSize: 16)),
-              const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label.split(' ').skip(1).join(' '),
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700,
-                        color: on ? primary : Theme.of(context).colorScheme.onSurface)),
-                Text(desc, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
-              ])),
-              Icon(on ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  size: 20, color: on ? primary : AppColors.inkMuted),
-            ]),
           ),
-        );
+          // Sub-permissions
+          if (on && subPerms != null && subPerms.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(left: 24, bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface2Dark : AppColors.surface2,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Sub-features:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkMuted)),
+                const SizedBox(height: 8),
+                ...subPerms.map((sub) {
+                  final (subId, subLabel, subDesc) = sub;
+                  final subOn = _perms.contains(subId);
+                  return GestureDetector(
+                    onTap: () => setState(() => subOn ? _perms.remove(subId) : _perms.add(subId)),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: subOn ? primary.withValues(alpha: 0.06) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(children: [
+                        Icon(subOn ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                            size: 16, color: subOn ? primary : AppColors.inkMuted),
+                        const SizedBox(width: 8),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(subLabel, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600,
+                              color: subOn ? primary : Theme.of(context).colorScheme.onSurface)),
+                          Text(subDesc, style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
+                        ])),
+                      ]),
+                    ),
+                  );
+                }),
+              ]),
+            ),
+        ]);
       }),
       const SizedBox(height: 20),
 

@@ -119,6 +119,8 @@ class _LogoResolver extends StatelessWidget {
         width: w,
         fit: fit,
         filterQuality: FilterQuality.high,
+        cacheWidth: (w * MediaQuery.of(context).devicePixelRatio).round(),
+        cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
         loadingBuilder: (ctx, child, progress) =>
             progress == null ? child : _placeholder(context, height, w),
         errorBuilder: (ctx, _, __) => _placeholder(context, height, w),
@@ -135,6 +137,8 @@ class _LogoResolver extends StatelessWidget {
           width: w,
           fit: fit,
           filterQuality: FilterQuality.high,
+          cacheWidth: (w * MediaQuery.of(context).devicePixelRatio).round(),
+          cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
           errorBuilder: (_, __, ___) => _defaultAsset(height, w),
         );
       }
@@ -144,12 +148,16 @@ class _LogoResolver extends StatelessWidget {
     return _defaultAsset(height, w);
   }
 
-  Widget _defaultAsset(double h, double w) => Image.asset(
-    _kDefaultAsset,
-    height: h,
-    width: w,
-    fit: fit,
-    filterQuality: FilterQuality.high,
+  Widget _defaultAsset(double h, double w) => Builder(
+    builder: (context) => Image.asset(
+      _kDefaultAsset,
+      height: h,
+      width: w,
+      fit: fit,
+      filterQuality: FilterQuality.high,
+      cacheWidth: (w * MediaQuery.of(context).devicePixelRatio).round(),
+      cacheHeight: (h * MediaQuery.of(context).devicePixelRatio).round(),
+    ),
   );
 
   Widget _placeholder(BuildContext ctx, double h, double w) =>

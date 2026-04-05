@@ -185,196 +185,207 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
     return Scaffold(
       backgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Spacer to push content to center
+                      const Spacer(),
 
-                // ── Logo + long-press trigger ────────────────────────────────
-                GestureDetector(
-                  onLongPress: _openAdminPortal,
-                  child: Column(children: [
-                    AppLogo.fullWidth(),
-                    const SizedBox(height: 14),
-                    Text(
-                      staff.isEmpty
-                          ? 'No staff added yet'
-                          : 'Enter your PIN to continue',
-                      style: GoogleFonts.inter(
-                          fontSize: 13, color: AppColors.inkMuted),
-                    ),
-                    // Hint only when Firebase not authed
-                    if (!isFirebaseAuthed) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Admin? Hold logo for 2 seconds',
-                        style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: AppColors.inkMuted.withValues(alpha: 0.55)),
-                      ),
-                    ],
-                  ]),
-                ),
-
-                const SizedBox(height: 40),
-
-                // ── PIN dots ─────────────────────────────────────────────────
-                AnimatedBuilder(
-                  animation: _shakeAnim,
-                  builder: (ctx, child) {
-                    final dx = _shake
-                        ? 10 * (_shakeAnim.value < 0.5
-                            ? -_shakeAnim.value * 2
-                            : (_shakeAnim.value - 0.5) * 2)
-                        : 0.0;
-                    return Transform.translate(
-                        offset: Offset(dx * 10, 0), child: child);
-                  },
-                  child: Column(children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(4, (i) {
-                        final filled = i < _pin.length;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 140),
-                          margin: const EdgeInsets.symmetric(horizontal: 10),
-                          width: 16, height: 16,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: filled ? primary : Colors.transparent,
-                            border: Border.all(
-                              color: _error != null
-                                  ? AppColors.dangerColor(isDark)
-                                  : filled
-                                      ? primary
-                                      : AppColors.inkMuted.withValues(alpha: 0.5),
-                              width: 2,
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 10),
-                    AnimatedOpacity(
-                      opacity: _error != null ? 1 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Text(_error ?? '',
-                          style: GoogleFonts.inter(
-                              fontSize: 12, fontWeight: FontWeight.w600,
-                              color: AppColors.dangerColor(isDark))),
-                    ),
-                  ]),
-                ),
-
-                const SizedBox(height: 32),
-
-                // ── Keypad ───────────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48),
-                  child: Column(children: [
-                    for (final row in [
-                      ['1','2','3'],
-                      ['4','5','6'],
-                      ['7','8','9'],
-                      ['','0','⌫'],
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: row.map((k) {
-                            if (k.isEmpty) return const SizedBox(width: 72, height: 72);
-                            return _PinKey(
-                              label: k,
-                              isDark: isDark,
-                              primary: primary,
-                              isDelete: k == '⌫',
-                              onTap: () => k == '⌫' ? _delete() : _append(k),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                  ]),
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Owner login / staff info ─────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(children: [
-
-                    if (isFirebaseAuthed) ...[
-                      // Owner bypass button — only when Firebase authed
+                      // ── Logo + long-press trigger ────────────────────────────────
                       GestureDetector(
-                        onTap: _ownerLogin,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color: primary.withValues(alpha: 0.22)),
+                        onLongPress: _openAdminPortal,
+                        child: Column(children: [
+                          AppLogo.fullWidth(),
+                          const SizedBox(height: 14),
+                          Text(
+                            staff.isEmpty
+                                ? 'No staff added yet'
+                                : 'Enter your PIN to continue',
+                            style: GoogleFonts.inter(
+                                fontSize: 13, color: AppColors.inkMuted),
                           ),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                            Icon(Icons.shield_rounded, size: 16, color: primary),
-                            const SizedBox(width: 8),
-                            Text('Login as Owner',
-                                style: GoogleFonts.inter(
-                                    fontSize: 14, fontWeight: FontWeight.w700,
-                                    color: primary)),
-                          ]),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Tap to authenticate as Owner',
-                        style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: AppColors.inkMuted.withValues(alpha: 0.6)),
-                      ),
-                    ] else ...[
-                      // Not Firebase authed — show staff count hint
-                      if (staff.isNotEmpty)
-                        Text(
-                          '${staff.length} staff member${staff.length > 1 ? 's' : ''} configured',
-                          style: GoogleFonts.inter(
-                              fontSize: 12, color: AppColors.inkMuted),
-                        ),
-                      if (staff.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: primary.withValues(alpha: 0.15)),
-                          ),
-                          child: Column(children: [
-                            Icon(Icons.info_outline_rounded,
-                                size: 20, color: primary),
-                            const SizedBox(height: 8),
+                          // Hint only when Firebase not authed
+                          if (!isFirebaseAuthed) ...[
+                            const SizedBox(height: 6),
                             Text(
-                              'No staff added yet.\n'
-                              'Hold the logo above for 2 seconds to access the admin panel and sign in.',
-                              textAlign: TextAlign.center,
+                              'Admin? Hold logo for 2 seconds',
                               style: GoogleFonts.inter(
-                                  fontSize: 12, color: AppColors.inkMuted,
-                                  height: 1.5),
+                                  fontSize: 11,
+                                  color: AppColors.inkMuted.withValues(alpha: 0.55)),
                             ),
-                          ]),
-                        ),
-                    ],
+                          ],
+                        ]),
+                      ),
 
-                  ]),
+                      const SizedBox(height: 40),
+
+                      // ── PIN dots ─────────────────────────────────────────────────
+                      AnimatedBuilder(
+                        animation: _shakeAnim,
+                        builder: (ctx, child) {
+                          final dx = _shake
+                              ? 10 * (_shakeAnim.value < 0.5
+                                  ? -_shakeAnim.value * 2
+                                  : (_shakeAnim.value - 0.5) * 2)
+                              : 0.0;
+                          return Transform.translate(
+                              offset: Offset(dx * 10, 0), child: child);
+                        },
+                        child: Column(children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(4, (i) {
+                              final filled = i < _pin.length;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 140),
+                                margin: const EdgeInsets.symmetric(horizontal: 10),
+                                width: 16, height: 16,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: filled ? primary : Colors.transparent,
+                                  border: Border.all(
+                                    color: _error != null
+                                        ? AppColors.dangerColor(isDark)
+                                        : filled
+                                            ? primary
+                                            : AppColors.inkMuted.withValues(alpha: 0.5),
+                                    width: 2,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                          const SizedBox(height: 10),
+                          AnimatedOpacity(
+                            opacity: _error != null ? 1 : 0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Text(_error ?? '',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12, fontWeight: FontWeight.w600,
+                                    color: AppColors.dangerColor(isDark))),
+                          ),
+                        ]),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // ── Keypad ───────────────────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 48),
+                        child: Column(children: [
+                          for (final row in [
+                            ['1','2','3'],
+                            ['4','5','6'],
+                            ['7','8','9'],
+                            ['','0','⌫'],
+                          ])
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: row.map((k) {
+                                  if (k.isEmpty) return const SizedBox(width: 72, height: 72);
+                                  return _PinKey(
+                                    label: k,
+                                    isDark: isDark,
+                                    primary: primary,
+                                    isDelete: k == '⌫',
+                                    onTap: () => k == '⌫' ? _delete() : _append(k),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                        ]),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // ── Owner login / staff info ─────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(children: [
+
+                          if (isFirebaseAuthed) ...[
+                            // Owner bypass button — only when Firebase authed
+                            GestureDetector(
+                              onTap: _ownerLogin,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: primary.withValues(alpha: 0.07),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: primary.withValues(alpha: 0.22)),
+                                ),
+                                child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                  Icon(Icons.shield_rounded, size: 16, color: primary),
+                                  const SizedBox(width: 8),
+                                  Text('Login as Owner',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 14, fontWeight: FontWeight.w700,
+                                          color: primary)),
+                                ]),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Tap to authenticate as Owner',
+                              style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AppColors.inkMuted.withValues(alpha: 0.6)),
+                            ),
+                          ] else ...[
+                            // Not Firebase authed — show staff count hint
+                            if (staff.isNotEmpty)
+                              Text(
+                                '${staff.length} staff member${staff.length > 1 ? 's' : ''} configured',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12, color: AppColors.inkMuted),
+                              ),
+                            if (staff.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: primary.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: primary.withValues(alpha: 0.15)),
+                                ),
+                                child: Column(children: [
+                                  Icon(Icons.info_outline_rounded,
+                                      size: 20, color: primary),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'No staff added yet.\n'
+                                    'Hold the logo above for 2 seconds to access the admin panel and sign in.',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                        fontSize: 12, color: AppColors.inkMuted,
+                                        height: 1.5),
+                                  ),
+                                ]),
+                              ),
+                          ],
+
+                        ]),
+                      ),
+
+                      // Spacer to push content to center
+                      const Spacer(),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
