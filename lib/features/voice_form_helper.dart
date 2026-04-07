@@ -12,6 +12,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
@@ -280,6 +281,26 @@ class _VoiceFormSheetState extends ConsumerState<VoiceFormSheet> {
 
   // ── STT ─────────────────────────────────────────────────────────────────────
   Future<void> _initStt() async {
+    // 1. Check & request runtime microphone permission
+    var status = await Permission.microphone.status;
+    if (status.isDenied) {
+      status = await Permission.microphone.request();
+    }
+
+    if (status.isPermanentlyDenied) {
+      if (mounted) {
+        _bot('❌ Microphone permission is permanently denied.\n'
+            'Please enable it in App Settings to use voice features.');
+      }
+      return;
+    }
+
+    if (!status.isGranted) {
+      if (mounted) setState(() => _sttAvail = false);
+      return;
+    }
+
+    // 2. Initialize speech-to-text engine
     final ok = await _speech.initialize(
       onStatus: (s) {
         if (s == 'notListening' && mounted) {
@@ -292,7 +313,14 @@ class _VoiceFormSheetState extends ConsumerState<VoiceFormSheet> {
   }
 
   Future<void> _toggleMic() async {
-    if (!_sttAvail) { await _initStt(); if (!_sttAvail) return; }
+    if (!_sttAvail) {
+      await _initStt();
+      if (!_sttAvail) {
+        _bot('❌ Microphone permission denied.\n'
+            'Please allow microphone access in App Settings and try again.');
+        return;
+      }
+    }
     if (_listening) {
       await _speech.stop();
       setState(() => _listening = false);

@@ -1,54 +1,56 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const bg           = Color(0xFFF0F7FF);   // light blue-white
+  // Minimalistic neutral palette
+  static const bg           = Color(0xFFFAFAFA);   // very light gray-white
   static const card         = Color(0xFFFFFFFF);
-  static const surface2     = Color(0xFFE3F0FF);
-  static const ink          = Color(0xFF0A1628);
-  static const inkSoft      = Color(0xFF2D4A7A);
-  static const inkMuted     = Color(0xFF6B82A8);
-  static const separator    = Color(0xFFCCDFF5);
-  static const primary      = Color(0xFF1A6BFF);
-  static const primaryDark  = Color(0xFF0A1F6E);
-  static const primaryLight = Color(0xFF00C4FF);
-  static const coolJar      = Color(0xFF0096C7);
-  static const petJar       = Color(0xFF2EC4B6);
-  static const success      = Color(0xFF06D6A0);
-  static const warning      = Color(0xFFFFD166);
-  static const danger       = Color(0xFFEF476F);
-  static const orange       = Color(0xFFFF8C42);
-  static const purple       = Color(0xFF7B61FF);
+  static const surface2     = Color(0xFFF5F5F5);   // subtle gray
+  static const ink          = Color(0xFF1C1C1E);   // dark gray-black
+  static const inkSoft      = Color(0xFF48484A);   // medium gray
+  static const inkMuted     = Color(0xFF8E8E93);   // light gray
+  static const separator    = Color(0xFFE5E5EA);   // very light separator
+  static const primary      = Color(0xFF007AFF);   // iOS blue accent
+  static const primaryDark  = Color(0xFF0051D5);   // darker blue
+  static const primaryLight = Color(0xFF5AC8FA);   // lighter blue
+  static const coolJar      = Color(0xFF3478F6);   // muted blue
+  static const petJar       = Color(0xFF30D158);   // green accent
+  static const success      = Color(0xFF34C759);   // iOS green
+  static const warning      = Color(0xFFFF9500);   // iOS orange
+  static const danger       = Color(0xFFFF3B30);   // iOS red
+  static const orange       = Color(0xFFFF9500);   // consistent orange
+  static const purple       = Color(0xFFAF52DE);   // muted purple
 
-  static const bgDark        = Color(0xFF0A0F1A);   // deep ocean dark
-  static const cardDark      = Color(0xFF0F1722);
-  static const surface2Dark  = Color(0xFF182034);
-  static const inkDark       = Color(0xFFD6E8FF);
-  static const inkSoftDark   = Color(0xFF7A9CC0);
-  static const separatorDark = Color(0xFF1E2D45);
-  static const primaryDM     = Color(0xFF4D9FFF);
-  static const coolJarDM     = Color(0xFF4CC9F0);
-  static const petJarDM      = Color(0xFF64DFDF);
-  static const successDM     = Color(0xFF3FB950);
-  static const warningDM     = Color(0xFFD29922);
-  static const dangerDM      = Color(0xFFF85149);
+  // Dark theme - minimalistic dark palette
+  static const bgDark        = Color(0xFF000000);   // pure black
+  static const cardDark      = Color(0xFF1C1C1E);   // dark gray
+  static const surface2Dark  = Color(0xFF2C2C2E);   // medium dark gray
+  static const inkDark       = Color(0xFFFFFFFF);   // white text
+  static const inkSoftDark   = Color(0xFFAEAEB2);   // light gray
+  static const separatorDark = Color(0xFF38383A);   // dark separator
+  static const primaryDM     = Color(0xFF0A84FF);   // iOS blue dark mode
+  static const coolJarDM     = Color(0xFF64A2FF);   // muted blue dark
+  static const petJarDM      = Color(0xFF63D86E);   // green dark mode
+  static const successDM     = Color(0xFF30D158);   // iOS green dark
+  static const warningDM     = Color(0xFFFF9F0A);   // iOS orange dark
+  static const dangerDM      = Color(0xFFFF453A);   // iOS red dark
 
   static const primaryGradient = LinearGradient(colors: [primary, primaryLight], begin: Alignment.centerLeft, end: Alignment.centerRight);
   static const heroGradient    = LinearGradient(colors: [primaryDark, primary], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const coolGradient    = LinearGradient(colors: [Color(0xFF0077A8), Color(0xFF0096C7)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const petGradient     = LinearGradient(colors: [Color(0xFF1AA39A), Color(0xFF2EC4B6)], begin: Alignment.topLeft, end: Alignment.bottomRight);
-  static const waterGradient   = LinearGradient(colors: [Color(0xFF0A1F6E), Color(0xFF1A6BFF), Color(0xFF00C4FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const coolGradient    = LinearGradient(colors: [coolJar, Color(0xFF64A2FF)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const petGradient     = LinearGradient(colors: [petJar, Color(0xFF63D86E)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const waterGradient   = LinearGradient(colors: [primaryDark, primary, primaryLight], begin: Alignment.topLeft, end: Alignment.bottomRight);
 
   // ── Water-themed accent presets ──────────────────────────────────────────────
-  // Each entry: (hexString, displayName, isDarkFriendly)
+  // Minimalistic accent presets
   static const waterThemes = <(String, String, String)>[
-    ('1A6BFF', 'Ocean Blue',   '4D9FFF'),   // default
-    ('0096C7', 'Sky Blue',     '4CC9F0'),
-    ('00B4D8', 'Aqua',         '48CAE4'),
-    ('2EC4B6', 'Teal',         '64DFDF'),
-    ('06D6A0', 'Mint Green',   '3FB950'),
-    ('0077B6', 'Deep Ocean',   '4895EF'),
-    ('7B61FF', 'Violet',       '9B7FFF'),
-    ('FF8C42', 'Sunset',       'FFB347'),
+    ('007AFF', 'Ocean Blue',   '0A84FF'),   // default iOS blue
+    ('3478F6', 'Sky Blue',     '64A2FF'),
+    ('5AC8FA', 'Aqua',         '64D2FF'),
+    ('30D158', 'Mint Green',   '63D86E'),
+    ('34C759', 'Green',        '30D158'),
+    ('0051D5', 'Deep Ocean',   '0A84FF'),
+    ('AF52DE', 'Violet',       'BF5AF2'),
+    ('FF9500', 'Sunset',       'FF9F0A'),
   ];
 
   // bool-based helpers

@@ -77,7 +77,7 @@ class InventoryScreen extends ConsumerWidget {
   }
 }
 
-// ── Summary KPI ───────────────────────────────────────────────────────────────
+// ── Summary KPI - Modern Design ───────────────────────────────────────────────────────
 class _SummaryKpi extends StatelessWidget {
   final String label, value;
   final Color color;
@@ -86,20 +86,19 @@ class _SummaryKpi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(child: Container(
-    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withValues(alpha: 0.18)),
+      color: color.withValues(alpha: isDark ? 0.12 : 0.06),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: color.withValues(alpha: isDark ? 0.25 : 0.15), width: 1),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
-        child: Text(value, style: GoogleFonts.jetBrainsMono(fontSize: 22,
-            fontWeight: FontWeight.w700, color: color))),
-      const SizedBox(height: 2),
-      Text(label, style: GoogleFonts.inter(fontSize: 10,
-          fontWeight: FontWeight.w600, color: color),
-          maxLines: 1, overflow: TextOverflow.ellipsis),
+        child: Text(value, style: GoogleFonts.inter(fontSize: 24,
+            fontWeight: FontWeight.w800, color: color))),
+      const SizedBox(height: 4),
+      Text(label, style: GoogleFonts.inter(fontSize: 11,
+          fontWeight: FontWeight.w600, color: AppColors.inkMuted)),
     ]),
   ));
 }

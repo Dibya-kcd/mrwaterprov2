@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:uuid/uuid.dart';
 import '../core/providers/app_state.dart';
@@ -422,18 +423,33 @@ class _VoiceAssistantState extends ConsumerState<VoiceAssistantScreen> {
   }
 
   Future<void> _initStt() async {
+    // 1. Check & request runtime microphone permission
+    var status = await Permission.microphone.status;
+    if (status.isDenied) {
+      status = await Permission.microphone.request();
+    }
+
+    if (status.isPermanentlyDenied) {
+      if (mounted) {
+        _bot('❌ Microphone permission is permanently denied.\n'
+            'Please enable it in App Settings to use voice features.');
+      }
+      return;
+    }
+
+    if (!status.isGranted) {
+      if (mounted) setState(() => _sttAvail = false);
+      return;
+    }
+
+    // 2. Initialize speech-to-text engine
     final available = await _speech.initialize(
       onStatus: (status) {
-        // Only update UI state — do NOT auto-submit here.
-        // Chrome fires 'done' even during normal pauses between words.
-        // Submission is handled ONLY by the user tapping "Done" or
-        // by a confirmed final result after the full utterance.
         if (status == 'notListening' && mounted && _listening) {
           setState(() => _listening = false);
         }
       },
       onError: (error) {
-        // Don't submit on error — just reset mic state silently
         if (mounted) setState(() => _listening = false);
       },
     );
@@ -480,7 +496,7 @@ class _VoiceAssistantState extends ConsumerState<VoiceAssistantScreen> {
       await _initStt();
       if (!_sttAvail) {
         _bot('❌ Microphone permission denied.\n'
-            'Allow microphone access in browser settings and try again.');
+            'Please allow microphone access in App Settings and try again.');
         return;
       }
     }

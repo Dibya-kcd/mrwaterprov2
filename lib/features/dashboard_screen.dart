@@ -22,7 +22,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashState extends ConsumerState<DashboardScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tc;
 
   @override
@@ -146,30 +146,30 @@ class _QuickActionsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const actions = [
-      _QuickAction(Icons.local_shipping_rounded,    'Create\nDelivery',    Color(0xFF0096C7)),
-      _QuickAction(Icons.group_add_rounded,         'Create\nCustomer',    Color(0xFF7B61FF)),
-      _QuickAction(Icons.payments_rounded,          'Create\nPayment',     Color(0xFF06D6A0)),
-      _QuickAction(Icons.money_off_rounded,          'Create\nExpense',     Color(0xFFFF8C42)),
-      _QuickAction(Icons.document_scanner_rounded,  'Smart\nEntry',        AppColors.purple),
+      _QuickAction(Icons.local_shipping_rounded,    'Create\nDelivery',    Color(0xFF3478F6)),
+      _QuickAction(Icons.group_add_rounded,         'Create\nCustomer',    Color(0xFFAF52DE)),
+      _QuickAction(Icons.payments_rounded,          'Create\nPayment',     Color(0xFF30D158)),
+      _QuickAction(Icons.money_off_rounded,          'Create\nExpense',     Color(0xFFFF9500)),
+      _QuickAction(Icons.document_scanner_rounded,  'Smart\nEntry',        Color(0xFF007AFF)),
     ];
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.12),
-            blurRadius: 16, spreadRadius: 0, offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
+            blurRadius: 20, spreadRadius: 0, offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Quick Actions',
-            style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700,
+            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurface)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
 
         // 5 tiles — first row 4, second row 1 centered
         Row(
@@ -197,37 +197,38 @@ class _QuickActionsCard extends ConsumerWidget {
             ));
           }).toList(),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         // Smart Entry — full-width tile in second row
         _QuickTile(
           a: actions[4], isDark: isDark, fullWidth: true,
           onTap: () => ref.read(tabProvider.notifier).state = 10,
         ),
-        const SizedBox(height: 8),
-        // Voice Assistant — full-width gradient button in third row
+        const SizedBox(height: 16),
+        // Voice Assistant - full-width minimalistic button in third row
         GestureDetector(
           onTap: () => openVoiceAssistant(context),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(13),
-              boxShadow: [BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
-                blurRadius: 10, offset: const Offset(0, 4),
-              )],
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                width: 1,
+              ),
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.mic_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text('🎙 Voice Assistant',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 13, fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_ios_rounded,
-                  color: Colors.white, size: 11),
+              Icon(Icons.mic_rounded, 
+                  color: Theme.of(context).colorScheme.primary, size: 20),
+              const SizedBox(width: 12),
+              Text('Voice Assistant',
+                  style: GoogleFonts.inter(
+                      fontSize: 14, fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary)),
+              const SizedBox(width: 12),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: Theme.of(context).colorScheme.primary, size: 12),
             ]),
           ),
         ),
@@ -250,53 +251,53 @@ class _QuickTile extends StatelessWidget {
     child: fullWidth
         ? Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: a.color.withValues(alpha: isDark ? 0.15 : 0.08),
-              borderRadius: BorderRadius.circular(13),
+              color: a.color.withValues(alpha: isDark ? 0.12 : 0.06),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: a.color.withValues(alpha: isDark ? 0.35 : 0.22), width: 1),
+                  color: a.color.withValues(alpha: isDark ? 0.25 : 0.15), width: 1),
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(a.icon, size: 22, color: a.color),
-              const SizedBox(width: 10),
+              Icon(a.icon, size: 24, color: a.color),
+              const SizedBox(width: 12),
               Text(a.label.replaceAll('\n', ' '),
-                  style: GoogleFonts.dmSans(fontSize: 13,
-                      fontWeight: FontWeight.w700, color: a.color)),
-              const SizedBox(width: 8),
+                  style: GoogleFonts.inter(fontSize: 14,
+                      fontWeight: FontWeight.w600, color: a.color)),
+              const SizedBox(width: 12),
               Icon(Icons.arrow_forward_ios_rounded, size: 12, color: a.color),
             ]),
           )
         : Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              height: 62, width: double.infinity,
+              height: 72, width: double.infinity,
               decoration: BoxDecoration(
-                color: a.color.withValues(alpha: isDark ? 0.18 : 0.10),
-                borderRadius: BorderRadius.circular(13),
+                color: a.color.withValues(alpha: isDark ? 0.12 : 0.06),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                    color: a.color.withValues(alpha: isDark ? 0.35 : 0.22), width: 1),
+                    color: a.color.withValues(alpha: isDark ? 0.25 : 0.15), width: 1),
               ),
               child: Stack(alignment: Alignment.center, children: [
-                Icon(a.icon, size: 28, color: a.color),
+                Icon(a.icon, size: 32, color: a.color),
                 Positioned(
-                  right: 5, bottom: 5,
+                  right: 8, bottom: 8,
                   child: Container(
-                    width: 17, height: 17,
+                    width: 20, height: 20,
                     decoration: BoxDecoration(
                       color: a.color, shape: BoxShape.circle,
                       border: Border.all(
                           color: isDark ? AppColors.cardDark : Colors.white,
-                          width: 1.5),
+                          width: 2),
                     ),
-                    child: const Icon(Icons.add, size: 10, color: Colors.white),
+                    child: const Icon(Icons.add, size: 12, color: Colors.white),
                   ),
                 ),
               ]),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Text(a.label,
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w600,
+              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
                   height: 1.3,
                   color: Theme.of(context).colorScheme.onSurface)),
           ]),
@@ -337,9 +338,9 @@ class _NavGrid extends ConsumerWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.05,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.85,
       ),
       itemCount: _navItems2.length,
       itemBuilder: (ctx, i) {
@@ -350,19 +351,26 @@ class _NavGrid extends ConsumerWidget {
           child: Container(
             decoration: BoxDecoration(
               color: isDark ? AppColors.cardDark : Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.10),
-                  blurRadius: 8, spreadRadius: 0, offset: const Offset(0, 3),
+                  color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.06),
+                  blurRadius: 12, spreadRadius: 0, offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(item.icon, size: 34, color: c),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: isDark ? 0.15 : 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(item.icon, size: 24, color: c),
+              ),
               const SizedBox(height: 8),
               Text(item.label,
-                style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600,
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.onSurface),
                 textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
             ]),
@@ -911,7 +919,7 @@ class _QuickDeliverySheet extends ConsumerStatefulWidget {
 }
 
 class _QuickDeliverySheetState extends ConsumerState<_QuickDeliverySheet>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tc;
 
   @override
@@ -1170,6 +1178,7 @@ class _QuickPaymentFormState extends ConsumerState<_QuickPaymentForm> {
     ]);
   }
 }
+
 
 // Expense form and categories live in expenses/expenses_screen.dart
 

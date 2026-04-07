@@ -10,7 +10,7 @@ import '../core/services/company_session.dart';
 import '../core/services/session_manager.dart';
 import '../core/theme/app_colors.dart';
 import '../features/settings_screen.dart';
-import 'app_logo.dart';
+import 'modern_app_logo.dart';
 
 class AdminPanelScreen extends ConsumerWidget {
   final VoidCallback? onBack;
@@ -34,7 +34,7 @@ class AdminPanelScreen extends ConsumerWidget {
 
               // ── Header: Logo only (Redundant title removed) ───────────────
               const Center(
-                child: AppLogo(
+                child: ModernAppLogo(
                   height: 52,
                 ),
               ),

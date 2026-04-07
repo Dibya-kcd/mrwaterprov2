@@ -25,10 +25,10 @@ import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'features/admin_panel_screen.dart';
-import 'features/company_login_screen.dart';
+import 'features/modern_company_login_screen.dart';
 import 'features/main_scaffold.dart';
-import 'features/pin_lock_screen.dart';
-import 'features/splash_screen.dart';
+import 'features/modern_pin_lock_screen.dart';
+import 'features/modern_splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -294,21 +294,22 @@ class _AppGateState extends ConsumerState<_AppGate> {
 
 
         // PIN screen
-        _Screen.splash => SplashScreen(
+        _Screen.splash => ModernSplashScreen(
             key: const ValueKey('splash'),
             nextScreen: const SizedBox.shrink(),
             onComplete: _onSplashVideoEnded,
           ),
-        _Screen.pin => PinLockScreen(
+        _Screen.pin => ModernPinLockScreen(
             key: const ValueKey('pin'),
             onUnlocked:        _onPinUnlocked,
             onOpenAdminPortal: _onOpenAdminPortal,
           ),
 
         // Hidden admin portal
-        _Screen.adminPortal => CompanyLoginScreen(
-            key: const ValueKey('admin'),
-            onAuthenticated: _onAdminAuthenticated,
+        _Screen.adminPortal => ModernCompanyLoginScreen(
+            key: const ValueKey('adminPortal'),
+            onAuthenticated: ({required bool goDirectly}) =>
+                _onAdminAuthenticated(goDirectly: goDirectly),
             onBack: () => _goto(_Screen.pin),
           ),
 

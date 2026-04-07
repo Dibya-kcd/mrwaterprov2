@@ -44,11 +44,27 @@ class _CustScreenState extends ConsumerState<CustomersScreen> {
             Row(children: [
               Expanded(child: Text('Customers', style: Theme.of(context).textTheme.headlineLarge)),
               GestureDetector(
-                onTap: () => showMrSheet(context, title: '👤 Add Customer', builder: (_) => const AddCustForm()),
+                onTap: () => showMrSheet(context, title: 'Add Customer', builder: (_) => const AddCustForm()),
                 child: Container(
-                  height: 36, padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(gradient: AppColors.primaryGradient, borderRadius: BorderRadius.circular(10)),
-                  child: Center(child: Text('+ Add', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))),
+                  height: 40, 
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.add_rounded, 
+                        color: Theme.of(context).colorScheme.primary, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Add Customer', 
+                        style: GoogleFonts.inter(
+                            fontSize: 13, fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary)),
+                  ]),
                 ),
               ),
             ]),
