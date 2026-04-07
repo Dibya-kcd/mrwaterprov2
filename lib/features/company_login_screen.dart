@@ -110,20 +110,13 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
   }
 
   // ── Sign Up ───────────────────────────────────────────────────────────────
-  // ── Sign Up ───────────────────────────────────────────────────────────────
-  // Single-owner enforcement: block if a company already exists in Firebase.
-  // Owner record creation happens ONCE in _onVerified() after email is confirmed.
+  // Multi-company: every new sign-up creates an independent company in Firebase.
+  // Each owner's UID becomes their company ID — fully isolated by DB rules.
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_pwCtrl.text != _pw2Ctrl.text) { _fail('passwords-mismatch'); return; }
     setState(() { _loading = true; _error = null; });
     try {
-      // Guard: one Firebase project = one business owner
-      final alreadyExists = await RTDBUserDataSource.instance.anyCompanyExists();
-      if (alreadyExists) {
-        if (mounted) setState(() { _loading = false; _error = 'A business account already exists. Please sign in instead.'; });
-        return;
-      }
       final c = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailCtrl.text.trim(), password: _pwCtrl.text);
       await c.user!.updateDisplayName(_bizCtrl.text.trim());
@@ -441,8 +434,6 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
           'settings', 'expenses', 'smart_entry',
         ],
       });
-      // Mark that an owner is registered so future signups are blocked.
-      await RTDBUserDataSource.instance.markOwnerRegistered();
       await _promptOwnerPinSetup(user);
       return;
     }

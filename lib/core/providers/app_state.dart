@@ -852,15 +852,24 @@ class TxEditHistory {
 class SettingsNotifier extends StateNotifier<AppSettings> {
   SettingsNotifier() : super(const AppSettings()) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
   void _init() {
-    FirebaseService.instance.watch(FirebaseConfig.nodeSettings).listen((data) {
+    _sub?.cancel();
+    _sub = FirebaseService.instance.watch(FirebaseConfig.nodeSettings).listen((data) {
+      if (!mounted) return;
       if (data != null) state = AppSettings.fromJson(data);
     });
   }
 
+  void reinit() => _init();
+
   Future<void> save(AppSettings s) async {
     await FirebaseService.instance.write(FirebaseConfig.nodeSettings, s.toJson());
   }
+
+  @override
+  void dispose() { _sub?.cancel(); super.dispose(); }
 }
 
 final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((ref) => SettingsNotifier());
@@ -873,7 +882,13 @@ final themeModeProvider = Provider<ThemeMode>((ref) {
 class AuditNotifier extends StateNotifier<List<AuditEntry>> {
   AuditNotifier() : super([]) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
+  void reinit() { state = []; _init(); }
+
   void _init() {
+    _sub?.cancel();
+    state = [];
     FirebaseService.instance.watch('auditLog').listen((data) {  // DB node is 'auditLog'
       if (data != null) {
         state = data.values.map((e) => AuditEntry.fromJson(_castMap(e))).toList()
@@ -896,11 +911,12 @@ final auditProvider = StateNotifierProvider<AuditNotifier, List<AuditEntry>>((re
 class InventoryNotifier extends StateNotifier<InventoryState> {
   InventoryNotifier() : super(const InventoryState()) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
   void _init() {
-    // FIX: use watchInventory() which calls _db.ref(nodeInventory) directly
-    // (flat path). watch(nodeInventory) goes through _ref() which prepends
-    // companies/$companyId/ — a different path from where _save() writes.
-    FirebaseService.instance.watchInventory().listen((data) {
+    _sub?.cancel();
+    _sub = FirebaseService.instance.watchInventory().listen((data) {
+      if (!mounted) return;
       if (data != null) {
         state = InventoryState(
           coolTotal: (data['coolTotal'] ?? 0).toInt(),
@@ -911,6 +927,8 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
       }
     }, onError: (e) => debugPrint('[InventoryNotifier] error: $e'));
   }
+
+  void reinit() { state = const InventoryState(); _init(); }
 
   Future<void> _save() async {
     // FIX: writeInventory() calls _db.ref(nodeInventory).set() directly
@@ -1025,8 +1043,13 @@ final inventoryProvider = StateNotifierProvider<InventoryNotifier, InventoryStat
 class CustomersNotifier extends StateNotifier<List<Customer>> {
   CustomersNotifier() : super([]) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
   void _init() {
-    FirebaseService.instance.watch(FirebaseConfig.nodeCustomers).listen((data) {
+    _sub?.cancel();
+    state = [];
+    _sub = FirebaseService.instance.watch(FirebaseConfig.nodeCustomers).listen((data) {
+      if (!mounted) return;
       if (data != null) {
         final customers = <Customer>[];
         for (final entry in data.values) {
@@ -1039,6 +1062,8 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
       }
     }, onError: (e) => debugPrint('[CustomersNotifier] error: $e'));
   }
+
+  void reinit() => _init();
 
   /// Add a new customer — updates local state immediately (optimistic),
   /// then persists to Firebase. Firebase listener confirms asynchronously.
@@ -1145,7 +1170,13 @@ final customersProvider = StateNotifierProvider<CustomersNotifier, List<Customer
 class LedgerNotifier extends StateNotifier<List<LedgerEntry>> {
   LedgerNotifier() : super([]) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
+  void reinit() => _init();
+
   void _init() {
+    _sub?.cancel();
+    state = [];
     FirebaseService.instance.watch(FirebaseConfig.nodeLedgerEntries).listen((data) {
       if (data != null) {
         state = (data as Map).values
@@ -1183,8 +1214,15 @@ class TransactionsNotifier extends StateNotifier<List<JarTransaction>> {
 
   TransactionsNotifier(this._ref) : super([]) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
+  void reinit() { state = []; _init(); }
+
   void _init() {
-    FirebaseService.instance.watch(FirebaseConfig.nodeTransactions).listen((data) {
+    _sub?.cancel();
+    state = [];
+    _sub = FirebaseService.instance.watch(FirebaseConfig.nodeTransactions).listen((data) {
+      if (!mounted) return;
       if (data == null) { state = []; return; }
       final parsed = <JarTransaction>[];
       for (final entry in data.values) {
@@ -1528,8 +1566,14 @@ class LoadUnloadNotifier extends StateNotifier<LoadUnloadState> {
     Future.microtask(_init);
   }
 
+  StreamSubscription? _sub;
+
+  void reinit() => _init();
+
   void _init() {
-    FirebaseService.instance.watch(FirebaseConfig.nodeLoadUnload).listen((data) {
+    _sub?.cancel();
+    _sub = FirebaseService.instance.watch(FirebaseConfig.nodeLoadUnload).listen((data) {
+      if (!mounted) return;
       if (data != null) {
         final trips = (data as Map).values
             .map((e) => TripEntry.fromJson(_castMap(e)))
@@ -1709,8 +1753,14 @@ class DayLog {
 class DayLogNotifier extends StateNotifier<List<DayLog>> {
   DayLogNotifier() : super([]) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
+  void reinit() { state = []; _init(); }
+
   void _init() {
-    FirebaseService.instance.watch(FirebaseConfig.nodeLoadUnload).listen((data) {
+    _sub?.cancel();
+    _sub = FirebaseService.instance.watch(FirebaseConfig.nodeLoadUnload).listen((data) {
+      if (!mounted) return;
       if (data == null) { state = []; return; }
       final logs = <DayLog>[];
       for (final entry in data.values) {

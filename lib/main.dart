@@ -12,6 +12,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/staff_provider.dart';
+import 'core/providers/app_state.dart'
+    show
+        customersProvider,
+        transactionsProvider,
+        inventoryProvider,
+        ledgerProvider,
+        dayLogProvider,
+        loadUnloadProvider;
 import 'core/services/company_session.dart';
 import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
@@ -237,19 +245,33 @@ class _AppGateState extends ConsumerState<_AppGate> {
   }
 
   // ── Init owner session ────────────────────────────────────────────────────
-  // Only initialises CompanySession so providers can stream data from Firebase.
+  // Always updates CompanySession to the current user's UID and reinitialises
+  // ALL data providers so they stream from the correct company's Firebase node.
+  //
+  // IMPORTANT: we always call CompanySession.init() unconditionally — never
+  // guarded by isLoggedIn. If Company A was active and Company B now logs in,
+  // the session must switch to Company B immediately so every provider reads
+  // from companies/{B}/... instead of companies/{A}/...
+  //
   // Does NOT create any user records — that is done ONCE by
   // CompanyLoginScreen._ensureOwnerRecord() on first sign-up only.
   void _initOwnerSession(User user) {
-    if (!CompanySession.isLoggedIn) {
-      CompanySession.init(user.uid,
-          name: user.displayName ?? user.email ?? '');
-    }
-    // Reinit staffProvider so it streams the existing owner record from Firebase.
-    // No record is created here — avoids duplicates on every login / device.
+    // Always update — this is the critical fix for multi-company switching.
+    CompanySession.init(user.uid,
+        name: user.displayName ?? user.email ?? '');
+
+    // Reinit ALL providers so they cancel their old Firebase streams and
+    // open new ones scoped to the current company UID.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(staffProvider.notifier).reinit();
+      ref.read(settingsProvider.notifier).reinit();
+      ref.read(customersProvider.notifier).reinit();
+      ref.read(transactionsProvider.notifier).reinit();
+      ref.read(inventoryProvider.notifier).reinit();
+      ref.read(ledgerProvider.notifier).reinit();
+      ref.read(dayLogProvider.notifier).reinit();
+      ref.read(loadUnloadProvider.notifier).reinit();
     });
   }
 

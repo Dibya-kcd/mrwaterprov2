@@ -70,33 +70,7 @@ class RTDBUserDataSource {
     await _usersRef(companyId).child(userId).remove();
   }
 
-  /// Checks if any company is already registered in the system.
-  /// Reads metadata/owner_registered which is publicly readable per DB rules.
-  /// This is the ONLY check — we do NOT read root 'companies/' (denied by rules).
-  Future<bool> anyCompanyExists() async {
-    try {
-      final metaSnap = await FirebaseDatabase.instanceFor(
-        app: FirebaseDatabase.instance.app,
-        databaseURL: FirebaseConfig.databaseUrl,
-      ).ref('metadata/owner_registered').get();
-      return metaSnap.exists && metaSnap.value == true;
-    } catch (e) {
-      debugPrint('anyCompanyExists check failed: $e');
-      // Fail-open: if we cannot check, allow signup to proceed.
-      // _ensureOwnerRecord will be idempotent anyway.
-      return false;
-    }
-  }
-
-  /// Sets the global flag that an owner has been registered.
-  Future<void> markOwnerRegistered() async {
-    try {
-      await FirebaseDatabase.instanceFor(
-        app: FirebaseDatabase.instance.app,
-        databaseURL: FirebaseConfig.databaseUrl,
-      ).ref('metadata/owner_registered').set(true);
-    } catch (e) {
-      debugPrint('Error marking owner registered: $e');
-    }
-  }
+  // anyCompanyExists() and markOwnerRegistered() removed.
+  // The app supports multiple independent companies — each Firebase Auth user
+  // (UID) becomes their own company. No global registration flag is needed.
 }
