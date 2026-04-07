@@ -1,11 +1,21 @@
 import '../providers/app_state.dart';
+import '../services/company_session.dart';
 import '../services/rtdb_user_datasource.dart';
 import '../utils/pin_hash_util.dart';
 
-class PinRepository {
-  PinRepository({required this.companyId});
+// ════════════════════════════════════════════════════════════════════════════
+// pin_repository.dart
+//
+// IMPORTANT: companyId is read from CompanySession on every call — NOT stored
+// as a final field. See auth_repository.dart for the full explanation.
+// ════════════════════════════════════════════════════════════════════════════
 
-  final String companyId;
+class PinRepository {
+  PinRepository();
+
+  // Always reads the live companyId — never cached.
+  String get _companyId => CompanySession.companyId;
+
   final _datasource = RTDBUserDataSource.instance;
 
   Future<StaffMember?> verifyPin(String pin, List<StaffMember> users) async {
@@ -34,9 +44,11 @@ class PinRepository {
   }
 
   Future<void> createPinForUser(String userId, String pin) async {
+    final id = _companyId;
+    if (id.isEmpty) return;
     final salt = userId;
     final hash = PinHashUtil.hash(pin: pin, salt: salt);
-    await _datasource.updateUser(companyId, userId, {
+    await _datasource.updateUser(id, userId, {
       'pin': '',
       'pinHash': hash,
       'pinSalt': salt,

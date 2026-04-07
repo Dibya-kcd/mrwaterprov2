@@ -100,31 +100,45 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       }
       CompanySession.init(c.user!.uid,
           name: c.user!.displayName ?? c.user!.email ?? '');
-      await _ensureOwnerRecord(c.user!);
+      // ── DO NOT call _ensureOwnerRecord here ──────────────────────────────
+      // The owner record is created ONCE during sign-up (_onVerified).
+      // Calling it on every sign-in risks creating duplicate records on new
+      // devices if the Firebase stream hasn't loaded yet.
       if (mounted) _showSuccess();
     } on FirebaseAuthException catch (e) { _fail(e.code); }
     catch (e) { _fail('unknown'); }
   }
 
   // ── Sign Up ───────────────────────────────────────────────────────────────
+  // ── Sign Up ───────────────────────────────────────────────────────────────
+  // Single-owner enforcement: block if a company already exists in Firebase.
+  // Owner record creation happens ONCE in _onVerified() after email is confirmed.
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (_pwCtrl.text != _pw2Ctrl.text) { _fail('passwords-mismatch'); return; }
     setState(() { _loading = true; _error = null; });
     try {
+      // Guard: one Firebase project = one business owner
+      final alreadyExists = await RTDBUserDataSource.instance.anyCompanyExists();
+      if (alreadyExists) {
+        if (mounted) setState(() { _loading = false; _error = 'A business account already exists. Please sign in instead.'; });
+        return;
+      }
       final c = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailCtrl.text.trim(), password: _pwCtrl.text);
       await c.user!.updateDisplayName(_bizCtrl.text.trim());
       await c.user!.sendEmailVerification();
-      await _ensureOwnerRecord(c.user!);
-      // ⚠️ Do NOT sign out — keep user signed in so the timer can call user.reload()
+      // ⚠️ Do NOT call _ensureOwnerRecord here.
+      // CompanySession is not yet initialised — email is unverified.
+      // Owner record is created ONCE in _onVerified() after verification + CompanySession.init().
+      // ⚠️ Do NOT sign out — keep signed in so timer can call user.reload()
       if (mounted) {
         setState(() {
-          _loading    = false;
-          _view       = _View.verifyEmail;
+          _loading     = false;
+          _view        = _View.verifyEmail;
           _verifyEmail = c.user!.email;
-          _error      = null;
-          _info       = null;
+          _error       = null;
+          _info        = null;
         });
         _startDotAnimation();
         _startVerificationCheck();
@@ -397,25 +411,50 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
   }
 
   // ── Owner record setup ────────────────────────────────────────────────────
+  // Called ONCE: only from _onVerified() after email confirmed + CompanySession.init().
+  // NEVER called on sign-in — sign-in only reads existing data.
+  //
+  // DB structure enforced here:
+  //   companies/{uid}/users/{uid}   ← owner user record
+  //   metadata/owner_registered     ← single-owner guard flag
   Future<void> _ensureOwnerRecord(User user) async {
+    // CompanySession must already be initialised before we reach here.
+    // Path: companies/{uid}/users/{uid}
     final data = await RTDBUserDataSource.instance.getUser(user.uid, user.uid);
+
     if (data == null) {
+      // First registration on this Firebase account — create ONE company node.
+      debugPrint('[Auth] Creating owner record at companies/${user.uid}/users/${user.uid}');
       await RTDBUserDataSource.instance.setUser(user.uid, user.uid, {
-        'id': user.uid,
-        'name': user.displayName ?? user.email ?? 'Owner',
-        'email': user.email ?? '',
-        'phone': user.phoneNumber ?? '',
-        'pin': '', 'pinHash': '', 'pinSalt': user.uid,
-        'role': 'OWNER', 'isActive': true,
+        'id':          user.uid,
+        'name':        user.displayName ?? user.email ?? 'Owner',
+        'email':       user.email ?? '',
+        'phone':       user.phoneNumber ?? '',
+        'pin':         '',
+        'pinHash':     '',
+        'pinSalt':     user.uid,
+        'role':        'OWNER',
+        'isActive':    true,
         'permissions': [
           'dashboard', 'transactions', 'customers', 'inventory',
           'load_unload', 'payments', 'reports', 'notifications',
           'settings', 'expenses', 'smart_entry',
         ],
       });
+      // Mark that an owner is registered so future signups are blocked.
+      await RTDBUserDataSource.instance.markOwnerRegistered();
       await _promptOwnerPinSetup(user);
       return;
     }
+
+    // Record already exists — only fix role if somehow wrong (defensive).
+    final role = (data['role'] ?? '').toString().toUpperCase();
+    if (role != 'OWNER') {
+      debugPrint('[Auth] Fixing incorrect role for owner ${user.email}: was $role');
+      await RTDBUserDataSource.instance.updateUser(user.uid, user.uid, {'role': 'OWNER'});
+    }
+
+    // Prompt for PIN if missing (e.g. user skipped on first registration).
     final hasPin = (data['pinHash'] as String?)?.isNotEmpty ?? false;
     if (!hasPin) await _promptOwnerPinSetup(user);
   }
@@ -537,6 +576,16 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
 
     return Scaffold(
       backgroundColor: bg,
+      appBar: widget.onBack != null
+          ? AppBar(
+              backgroundColor: Colors.transparent, elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18,
+                    color: isDark ? Colors.white70 : Colors.black54),
+                onPressed: widget.onBack,
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -544,10 +593,27 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
             child: Column(children: [
 
               // ── Logo ───────────────────────────────────────────────────────
-              const AppLogo(height: 64),
-              const SizedBox(height: 32),
+              const AppLogo(height: 60),
+              const SizedBox(height: 10),
 
-              // ── Form card (Welcome Box) ────────────────────────────────────
+              // ── Portal badge ───────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: primary.withValues(alpha: 0.18)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.admin_panel_settings_rounded, size: 13, color: primary),
+                  const SizedBox(width: 6),
+                  Text('Business Owner Portal',
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: primary)),
+                ]),
+              ),
+              const SizedBox(height: 28),
+
+              // ── Form card ──────────────────────────────────────────────────
               Container(
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 440),
@@ -559,33 +625,12 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
                       color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
                       blurRadius: 28, offset: const Offset(0, 8))],
                 ),
-                child: Stack(
-                  children: [
-                    FadeTransition(
-                      opacity: _fadeAnim,
-                      child: SlideTransition(
-                        position: _slideAnim,
-                        child: Form(key: _formKey, child: _buildForm(isDark, primary)),
-                      ),
-                    ),
-
-                    // ✕ Close button in top-right corner of the welcome box
-                    Positioned(
-                      top: -14, right: -14,
-                      child: GestureDetector(
-                        onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.close_rounded,
-                              size: 18, color: AppColors.inkMuted.withValues(alpha: 0.5)),
-                        ),
-                      ),
-                    ),
-                  ],
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SlideTransition(
+                    position: _slideAnim,
+                    child: Form(key: _formKey, child: _buildForm(isDark, primary)),
+                  ),
                 ),
               ),
 

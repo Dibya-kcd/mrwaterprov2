@@ -10,7 +10,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/models/staff_member.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/staff_provider.dart';
 import 'core/services/company_session.dart';
@@ -237,31 +236,20 @@ class _AppGateState extends ConsumerState<_AppGate> {
     }
   }
 
-  // ── Init owner session + auto-add staff ───────────────────────────────────
+  // ── Init owner session ────────────────────────────────────────────────────
+  // Only initialises CompanySession so providers can stream data from Firebase.
+  // Does NOT create any user records — that is done ONCE by
+  // CompanyLoginScreen._ensureOwnerRecord() on first sign-up only.
   void _initOwnerSession(User user) {
     if (!CompanySession.isLoggedIn) {
       CompanySession.init(user.uid,
           name: user.displayName ?? user.email ?? '');
     }
+    // Reinit staffProvider so it streams the existing owner record from Firebase.
+    // No record is created here — avoids duplicates on every login / device.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final active =
-          ref.read(staffProvider).where((s) => s.isActive).toList();
-      if (active.isEmpty) {
-        ref.read(staffProvider.notifier).add(StaffMember(
-          id:          user.uid,
-          name:        user.displayName ?? 'Owner',
-          phone:       user.phoneNumber ?? '',
-          pin:         '0000',
-          isActive:    true,
-          // Owner gets ALL permissions — same as sessionUser=null (unrestricted)
-          permissions: [
-            'dashboard', 'transactions', 'customers', 'inventory',
-            'load_unload', 'payments', 'reports', 'notifications',
-            'settings', 'expenses', 'smart_entry',
-          ],
-        ));
-      }
+      ref.read(staffProvider.notifier).reinit();
     });
   }
 
