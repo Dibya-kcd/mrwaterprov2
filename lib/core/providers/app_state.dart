@@ -1702,6 +1702,7 @@ class DayLog {
       (petLoaded  - petEmptyReturned  - petFilledReturned ).clamp(0, petLoaded);
 
   Map<String, dynamic> toJson() => {
+    'id': date,   // required by RTDB .validate rule: hasChildren(['id','date','coolLoaded','petLoaded'])
     'date': date,
     'coolLoaded': coolLoaded, 'petLoaded': petLoaded,
     'coolEmptyReturned': coolEmptyReturned, 'petEmptyReturned': petEmptyReturned,
