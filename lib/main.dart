@@ -10,25 +10,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/models/staff_member.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/staff_provider.dart';
-import 'core/providers/app_state.dart'
-    show
-        customersProvider,
-        transactionsProvider,
-        inventoryProvider,
-        ledgerProvider,
-        dayLogProvider,
-        loadUnloadProvider;
 import 'core/services/company_session.dart';
 import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'features/admin_panel_screen.dart';
-import 'features/modern_company_login_screen.dart';
+import 'features/company_login_screen.dart';
 import 'features/main_scaffold.dart';
-import 'features/modern_pin_lock_screen.dart';
-import 'features/modern_splash_screen.dart';
+import 'features/pin_lock_screen.dart';
+import 'features/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -244,34 +237,31 @@ class _AppGateState extends ConsumerState<_AppGate> {
     }
   }
 
-  // ── Init owner session ────────────────────────────────────────────────────
-  // Always updates CompanySession to the current user's UID and reinitialises
-  // ALL data providers so they stream from the correct company's Firebase node.
-  //
-  // IMPORTANT: we always call CompanySession.init() unconditionally — never
-  // guarded by isLoggedIn. If Company A was active and Company B now logs in,
-  // the session must switch to Company B immediately so every provider reads
-  // from companies/{B}/... instead of companies/{A}/...
-  //
-  // Does NOT create any user records — that is done ONCE by
-  // CompanyLoginScreen._ensureOwnerRecord() on first sign-up only.
+  // ── Init owner session + auto-add staff ───────────────────────────────────
   void _initOwnerSession(User user) {
-    // Always update — this is the critical fix for multi-company switching.
-    CompanySession.init(user.uid,
-        name: user.displayName ?? user.email ?? '');
-
-    // Reinit ALL providers so they cancel their old Firebase streams and
-    // open new ones scoped to the current company UID.
+    if (!CompanySession.isLoggedIn) {
+      CompanySession.init(user.uid,
+          name: user.displayName ?? user.email ?? '');
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(staffProvider.notifier).reinit();
-      ref.read(settingsProvider.notifier).reinit();
-      ref.read(customersProvider.notifier).reinit();
-      ref.read(transactionsProvider.notifier).reinit();
-      ref.read(inventoryProvider.notifier).reinit();
-      ref.read(ledgerProvider.notifier).reinit();
-      ref.read(dayLogProvider.notifier).reinit();
-      ref.read(loadUnloadProvider.notifier).reinit();
+      final active =
+          ref.read(staffProvider).where((s) => s.isActive).toList();
+      if (active.isEmpty) {
+        ref.read(staffProvider.notifier).add(StaffMember(
+          id:          user.uid,
+          name:        user.displayName ?? 'Owner',
+          phone:       user.phoneNumber ?? '',
+          pin:         '0000',
+          isActive:    true,
+          // Owner gets ALL permissions — same as sessionUser=null (unrestricted)
+          permissions: [
+            'dashboard', 'transactions', 'customers', 'inventory',
+            'load_unload', 'payments', 'reports', 'notifications',
+            'settings', 'expenses', 'smart_entry',
+          ],
+        ));
+      }
     });
   }
 
@@ -294,22 +284,21 @@ class _AppGateState extends ConsumerState<_AppGate> {
 
 
         // PIN screen
-        _Screen.splash => ModernSplashScreen(
+        _Screen.splash => SplashScreen(
             key: const ValueKey('splash'),
             nextScreen: const SizedBox.shrink(),
             onComplete: _onSplashVideoEnded,
           ),
-        _Screen.pin => ModernPinLockScreen(
+        _Screen.pin => PinLockScreen(
             key: const ValueKey('pin'),
             onUnlocked:        _onPinUnlocked,
             onOpenAdminPortal: _onOpenAdminPortal,
           ),
 
         // Hidden admin portal
-        _Screen.adminPortal => ModernCompanyLoginScreen(
-            key: const ValueKey('adminPortal'),
-            onAuthenticated: ({required bool goDirectly}) =>
-                _onAdminAuthenticated(goDirectly: goDirectly),
+        _Screen.adminPortal => CompanyLoginScreen(
+            key: const ValueKey('admin'),
+            onAuthenticated: _onAdminAuthenticated,
             onBack: () => _goto(_Screen.pin),
           ),
 

@@ -5,7 +5,6 @@ import '../../core/providers/app_state.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/shared_widgets.dart';
-import '../../shared/widgets/modern_sidebar.dart';
 import 'dashboard_screen.dart';
 import 'transactions_screen.dart';
 import 'customers_screen.dart';
@@ -17,7 +16,8 @@ import 'smart_entry_screen.dart';
 import 'reports_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
-import 'modern_app_logo.dart';
+import 'pin_lock_screen.dart';
+import 'app_logo.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MAIN SCAFFOLD  — top app bar + bottom nav + drawer
@@ -44,10 +44,7 @@ class MainScaffold extends ConsumerWidget {
     final tab     = ref.watch(tabProvider);
     final isDark  = Theme.of(context).brightness == Brightness.dark;
     final w       = MediaQuery.of(context).size.width;
-    
-    // Enhanced responsive breakpoints
-    final isDesktop = w >= 1200;
-    final isTablet  = w >= 768 && w < 1200;
+    final isWide  = w >= 900;
 
     final screens = <Widget>[
       const StaffGuard(permission: 'dashboard',      child: DashboardScreen()),
@@ -63,10 +60,8 @@ class MainScaffold extends ConsumerWidget {
       const StaffGuard(permission: 'smart_entry',    child: SmartEntryScreen()),
     ];
 
-    if (isDesktop) {
-      return _DesktopLayout(screens: screens, tab: tab, isDark: isDark);
-    } else if (isTablet) {
-      return _TabletLayout(screens: screens, tab: tab, isDark: isDark);
+    if (isWide) {
+      return _WideLayout(screens: screens, tab: tab, isDark: isDark);
     }
     return _MobileLayout(screens: screens, tab: tab, isDark: isDark);
   }
@@ -94,50 +89,22 @@ class _MobileLayout extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DESKTOP LAYOUT
+// WIDE / DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-class _DesktopLayout extends ConsumerWidget {
+class _WideLayout extends ConsumerWidget {
   final List<Widget> screens;
   final int tab;
   final bool isDark;
-  const _DesktopLayout({required this.screens, required this.tab, required this.isDark});
+  const _WideLayout({required this.screens, required this.tab, required this.isDark});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Row(children: [
-        ModernSidebar(tab: tab, isDark: isDark),
+        _Sidebar(tab: tab, isDark: isDark),
         Expanded(child: Column(children: [
           _MrAppBar(isDark: isDark, showBurger: false),
-          Expanded(child: IndexedStack(index: tab, children: screens)),
-        ])),
-      ]),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TABLET LAYOUT
-// ─────────────────────────────────────────────────────────────────────────────
-class _TabletLayout extends ConsumerWidget {
-  final List<Widget> screens;
-  final int tab;
-  final bool isDark;
-  const _TabletLayout({required this.screens, required this.tab, required this.isDark});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Row(children: [
-        // Collapsible modern sidebar for tablet
-        SizedBox(
-          width: 80,
-          child: TabletModernSidebar(tab: tab, isDark: isDark),
-        ),
-        Expanded(child: Column(children: [
-          _MrAppBar(isDark: isDark, showBurger: true),
           Expanded(child: IndexedStack(index: tab, children: screens)),
         ])),
       ]),
@@ -154,59 +121,52 @@ class _MrAppBar extends ConsumerWidget implements PreferredSizeWidget {
   const _MrAppBar({required this.isDark, this.showBurger = true});
 
   @override
-  Size get preferredSize => const Size.fromHeight(80);
+  Size get preferredSize => const Size.fromHeight(100);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final primary  = Theme.of(context).colorScheme.primary;
     final w        = MediaQuery.of(context).size.width;
     final compact  = w < 360;
 
     return Container(
-      height: 80 + MediaQuery.of(context).padding.top,
+      height: 100 + MediaQuery.of(context).padding.top,
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.separatorDark : AppColors.separator,
-            width: 0.5,
-          ),
+        gradient: LinearGradient(
+          colors: [primary, primary.withValues(alpha: 0.82)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06), 
-            blurRadius: 1, 
-            offset: const Offset(0, 1)
-          ),
+          BoxShadow(color: primary.withValues(alpha: 0.30), blurRadius: 14, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        // LEFT - burger menu
+        // LEFT — burger menu
         if (showBurger)
           GestureDetector(
             onTap: () => Scaffold.of(context).openDrawer(),
-            child: SizedBox(
-              width: 56, height: 56,
-              child: Icon(Icons.menu_rounded, 
-                  size: 24, 
-                  color: Theme.of(context).colorScheme.onSurface),
+            child: const SizedBox(
+              width: 60, height: 100,
+              child: Icon(Icons.menu_rounded, size: 28, color: Colors.white),
             ),
           )
         else
           const SizedBox(width: 16),
 
-        // MIDDLE - Branded ModernAppLogo
-        Expanded(
-          child: ModernAppLogo(
-            height: compact ? 36.0 : 42.0,
-            fit: BoxFit.contain,
+        // MIDDLE — MrWater logo, big and prominent
+        Expanded(child: Center(
+          child: AppLogo(
+            height: compact ? 70.0 : 86.0,
+            onDark: true,
           ),
-        ),
+        )),
 
-        // RIGHT - session chip + profile icon
+        // RIGHT — session chip + profile icon
         const SessionChip(),
-        _ProfileBtn(isDark: isDark, settings: settings),
+        _ProfileBtn(isDark: isDark, settings: settings, forceWhite: true),
       ]),
     );
   }
@@ -216,7 +176,8 @@ class _MrAppBar extends ConsumerWidget implements PreferredSizeWidget {
 class _ProfileBtn extends ConsumerWidget {
   final bool isDark;
   final AppSettings settings;
-  const _ProfileBtn({required this.isDark, required this.settings});
+  final bool forceWhite;
+  const _ProfileBtn({required this.isDark, required this.settings, this.forceWhite = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -229,18 +190,12 @@ class _ProfileBtn extends ConsumerWidget {
         width: 56, height: 56,
         child: Stack(alignment: Alignment.center, children: [
           Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            width: 34, height: 34,
+            decoration: const BoxDecoration(
+              color: Colors.white24,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                width: 1,
-              ),
             ),
-            child: Icon(Icons.person_rounded, 
-                size: 20, 
-                color: Theme.of(context).colorScheme.primary),
+            child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
           ),
           if (notifs > 0)
             Positioned(top: 6, right: 6,
@@ -416,33 +371,30 @@ class _BurgerDrawer extends ConsumerWidget {
       child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Drawer header
         Container(
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
+            gradient: LinearGradient(colors: [
+              primary.withValues(alpha: 0.15),
+              primary.withValues(alpha: 0.04),
+            ], begin: Alignment.topLeft, end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(children: [
             Container(
-              width: 48, height: 48,
+              width: 44, height: 44,
               decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
               child: Center(child: Text(
                 settings.ownerName.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase(),
-                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
               )),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Icon(Icons.water_drop_rounded, size: 14, color: primary),
-                const SizedBox(width: 4),
-                Text('MrWater', style: GoogleFonts.syne(
-                    fontSize: 16, fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : AppColors.ink)),
-              ]),
+              AppLogo(height: 60, onDark: isDark),
               const SizedBox(height: 2),
               Text(settings.ownerName, style: GoogleFonts.inter(
-                  fontSize: 12, color: AppColors.inkMuted, fontWeight: FontWeight.w600),
+                  fontSize: 12, color: AppColors.inkMuted),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
             ])),
           ]),
@@ -517,91 +469,67 @@ class _BottomNav extends ConsumerWidget {
     final pb      = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      height: 70 + pb,
+      height: 64 + pb,
       decoration: BoxDecoration(
         color: bg,
         border: Border(top: BorderSide(
-            color: isDark ? AppColors.separatorDark : AppColors.separator, width: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.08), 
-            blurRadius: 16, 
-            offset: const Offset(0, -2)
-          ),
-        ],
+            color: isDark ? AppColors.separatorDark : AppColors.separator)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10)],
       ),
       child: Padding(
         padding: EdgeInsets.only(bottom: pb),
         child: Row(children: [
-          // Home
+          // ── Home ─────────────────────────────────────────────────────────
           Expanded(child: GestureDetector(
             onTap: () => ref.read(tabProvider.notifier).state = kTabDashboard,
             behavior: HitTestBehavior.opaque,
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: tab == kTabDashboard 
-                      ? primary.withValues(alpha: 0.1) 
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.home_rounded,
-                    size: 22,
-                    color: tab == kTabDashboard ? primary : AppColors.inkMuted),
-              ),
-              const SizedBox(height: 4),
+              Icon(Icons.home_rounded,
+                  size: 24,
+                  color: tab == kTabDashboard ? primary : AppColors.inkMuted),
+              const SizedBox(height: 2),
               Text('Home', style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: tab == kTabDashboard ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 11,
+                  fontWeight: tab == kTabDashboard ? FontWeight.w700 : FontWeight.w500,
                   color: tab == kTabDashboard ? primary : AppColors.inkMuted)),
             ]),
           )),
 
-          // Centre + FAB
+          // ── Centre + FAB ──────────────────────────────────────────────────
           Expanded(child: GestureDetector(
-            onTap: () => showMrSheet(context, title: 'Quick Transaction',
+            onTap: () => showMrSheet(context, title: '⚡ Quick Transaction',
                 builder: (_) => _QuickSheet(isDark: isDark)),
             behavior: HitTestBehavior.opaque,
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Container(
-                width: 48, height: 48,
+                width: 52, height: 52,
                 decoration: BoxDecoration(
-                  color: primary,
+                  gradient: AppColors.primaryGradient,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: primary.withValues(alpha: 0.25),
-                      blurRadius: 8, offset: const Offset(0, 2),
+                      color: primary.withValues(alpha: 0.40),
+                      blurRadius: 12, offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
               ),
             ]),
           )),
 
-          // Alerts
+          // ── Alerts ────────────────────────────────────────────────────────
           Expanded(child: GestureDetector(
             onTap: () => ref.read(tabProvider.notifier).state = kTabNotifications,
             behavior: HitTestBehavior.opaque,
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: tab == kTabNotifications 
-                      ? primary.withValues(alpha: 0.1) 
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.notifications_rounded,
-                    size: 22,
-                    color: tab == kTabNotifications ? primary : AppColors.inkMuted),
-              ),
-              const SizedBox(height: 4),
+              Icon(Icons.notifications_rounded,
+                  size: 24,
+                  color: tab == kTabNotifications ? primary : AppColors.inkMuted),
+              const SizedBox(height: 2),
               Text('Alerts', style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: tab == kTabNotifications ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 11,
+                  fontWeight: tab == kTabNotifications ? FontWeight.w700 : FontWeight.w500,
                   color: tab == kTabNotifications ? primary : AppColors.inkMuted)),
             ]),
           )),
@@ -710,57 +638,82 @@ class _QuickSheet extends ConsumerWidget {
       );
 }
 
-// ── STAFF GUARD ──────────────────────────────────────────────────────────────
-class StaffGuard extends ConsumerWidget {
-  final String permission;
-  final Widget child;
-  const StaffGuard({super.key, required this.permission, required this.child});
+// ─────────────────────────────────────────────────────────────────────────────
+// DESKTOP SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+class _Sidebar extends ConsumerWidget {
+  final int tab;
+  final bool isDark;
+  const _Sidebar({required this.tab, required this.isDark});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(sessionUserProvider);
-    // Owner (null) has all perms; staff must have the explicit permission string
-    if (user == null || user.can(permission)) return child;
-    return const _AccessDenied();
-  }
-}
+    final primary     = Theme.of(context).colorScheme.primary;
+    final sessionUser = ref.watch(sessionUserProvider);
+    final visibleNav  = _navItems.where((item) =>
+        item.permission == null || sessionUser == null || sessionUser.can(item.permission!)).toList();
 
-class _AccessDenied extends StatelessWidget {
-  const _AccessDenied();
-  @override
-  Widget build(BuildContext context) => Center(child: Column(
-    mainAxisAlignment: MainAxisAlignment.center, children: [
-      const Icon(Icons.lock_person_rounded, size: 64, color: AppColors.inkSoft),
-      const SizedBox(height: 16),
-      Text('Access Denied', style: GoogleFonts.inter(
-          fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.inkMuted)),
-      Text('You don\'t have permission for this screen.',
-          style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
-    ]));
-}
-
-// ── SESSION CHIP ─────────────────────────────────────────────────────────────
-class SessionChip extends ConsumerWidget {
-  const SessionChip({super.key});
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user   = ref.watch(sessionUserProvider);
-    final label  = user?.name ?? 'Owner';
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      margin: const EdgeInsets.only(right: 8),
+      width: 220,
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? AppColors.cardDark : AppColors.card,
+        border: Border(right: BorderSide(
+            color: isDark ? AppColors.separatorDark : AppColors.separator)),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(user == null ? Icons.verified_user_rounded : Icons.person_rounded,
-            size: 13, color: AppColors.inkMuted),
-        const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.inter(
-            fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.inkMuted)),
-      ]),
+      child: SafeArea(child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface2Dark : AppColors.surface2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: AppLogo(
+                height: 58,
+                onDark: isDark,
+              ),
+            ),
+          ),
+        ),
+        Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
+        const SizedBox(height: 8),
+        Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 10),
+          children: visibleNav.map((item) {
+            final active = tab == item.tab;
+            return GestureDetector(
+              onTap: () => ref.read(tabProvider.notifier).state = item.tab,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                margin: const EdgeInsets.only(bottom: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                decoration: BoxDecoration(
+                  color: active ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  Icon(item.icon, size: 18,
+                      color: active ? primary : AppColors.inkMuted),
+                  const SizedBox(width: 10),
+                  Text(item.label, style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      color: active ? primary : Theme.of(context).colorScheme.onSurface)),
+                ]),
+              ),
+            );
+          }).toList(),
+        )),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: GradientButton(label: '⚡ Quick Transaction',
+              onTap: () => showMrSheet(context, title: '⚡ Quick Action',
+                  builder: (_) => _QuickSheet(isDark: isDark)),
+              height: 40),
+        ),
+      ])),
     );
   }
 }
+

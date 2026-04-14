@@ -6,12 +6,6 @@
     // Version : 2.2  (Refined Singleton Validation + Diagnostic Support)
     // ══════════════════════════════════════════════════════════════════════════
 
-    // ── Global Metadata (Public Read for single-owner enforcement) ─────
-    "metadata": {
-      ".read": true,
-      ".write": "auth != null && !data.exists()"
-    },
-
     "companies": {
       "$companyId": {
         // Only the authenticated owner (UID) can access their company data

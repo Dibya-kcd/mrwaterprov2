@@ -38,22 +38,18 @@ class RTDBUserDataSource {
     if (companyId.isEmpty) return const Stream.empty();
     return _usersRef(companyId).onValue.map((event) {
       if (!event.snapshot.exists || event.snapshot.value == null) return [];
-      final data = event.snapshot.value;
-      if (data is! Map) return [];
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
       return data.entries.map((entry) {
-        final userData = entry.value;
-        if (userData is! Map) return <String, dynamic>{'id': entry.key.toString()};
-        return <String, dynamic>{'id': entry.key.toString(), ..._deepCast(userData)};
+        final userData = entry.value as Map<dynamic, dynamic>;
+        return <String, dynamic>{'id': entry.key, ..._deepCast(userData)};
       }).toList();
     });
   }
 
   Future<Map<String, dynamic>?> getUser(String companyId, String userId) async {
-    if (companyId.isEmpty || userId.isEmpty) return null;
     final snap = await _usersRef(companyId).child(userId).get();
     if (!snap.exists || snap.value == null) return null;
-    final data = snap.value;
-    if (data is! Map) return null;
+    final data = snap.value as Map<dynamic, dynamic>;
     return <String, dynamic>{'id': userId, ..._deepCast(data)};
   }
 
@@ -68,8 +64,4 @@ class RTDBUserDataSource {
   Future<void> deleteUser(String companyId, String userId) async {
     await _usersRef(companyId).child(userId).remove();
   }
-
-  // anyCompanyExists() and markOwnerRegistered() removed.
-  // The app supports multiple independent companies — each Firebase Auth user
-  // (UID) becomes their own company. No global registration flag is needed.
 }

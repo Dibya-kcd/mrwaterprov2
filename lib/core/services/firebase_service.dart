@@ -64,13 +64,8 @@ class FirebaseService {
   /// until it is, then subscribes to Firebase.  This means ALL providers that
   /// call watch() in their constructors will automatically get live data once
   /// CompanySession.init() is called — no manual reinit() needed.
-  ///
-  /// The returned stream is always scoped to the companyId that was active when
-  /// CompanySession first became ready.  If the owner signs out and back in with
-  /// a different UID, providers that called watch() must call reinit() or be
-  /// disposed/recreated so they re-subscribe under the new companyId.
   Stream<Map<String, dynamic>?> watch(String node) {
-    // If already ready, subscribe immediately under the current companyId.
+    // If already ready, subscribe immediately
     final ref = _ref(node);
     if (ref != null) {
       return ref.onValue.map((event) {
@@ -79,28 +74,20 @@ class FirebaseService {
       });
     }
 
-    // Not ready yet — poll until CompanySession.init() is called.
+    // Not ready yet — use StreamController that waits for CompanySession
     final controller = StreamController<Map<String, dynamic>?>.broadcast();
     _waitAndSubscribe(node, controller);
     return controller.stream;
   }
 
   /// Polls every 200ms until CompanySession is ready, then subscribes.
-  /// The polling timer is cancelled as soon as the controller is closed
-  /// (provider disposed) so there are no zombie timers.
   void _waitAndSubscribe(String node,
       StreamController<Map<String, dynamic>?> controller) {
-    Timer? pollTimer;
-    pollTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      // Stop polling if the consumer already disposed the stream.
-      if (controller.isClosed) {
-        timer.cancel();
-        return;
-      }
+    Timer.periodic(const Duration(milliseconds: 200), (timer) {
       final ref = _ref(node);
-      if (ref == null) return; // CompanySession not ready yet — keep polling
+      if (ref == null) return; // still not ready, keep polling
       timer.cancel();
-      // Subscribe under the now-known companyId.
+      if (controller.isClosed) return;
       ref.onValue.listen(
         (event) {
           if (controller.isClosed) return;
@@ -114,9 +101,6 @@ class FirebaseService {
         onDone:  ()  { if (!controller.isClosed) controller.close(); },
       );
     });
-    // If the consumer cancels the stream before the poll fires,
-    // ensure the timer is cleaned up.
-    controller.onCancel = () => pollTimer?.cancel();
   }
 
   /// Write (set) a whole node. No-op if not initialised.

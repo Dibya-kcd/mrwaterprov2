@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
 import '../core/utils/pin_hash_util.dart';
-import 'modern_app_logo.dart';
+import 'app_logo.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
 import 'diagnostics_screen.dart';
