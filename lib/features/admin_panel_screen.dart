@@ -333,7 +333,7 @@ class _ActionCard extends StatelessWidget {
             Text(subtitle,
                 style: GoogleFonts.inter(color: AppColors.inkMuted, fontSize: 12, height: 1.3)),
           ])),
-          Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted, size: 20),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.inkMuted, size: 20),
         ]),
       ),
     );

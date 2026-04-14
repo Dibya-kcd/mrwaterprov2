@@ -4,6 +4,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'firebase_config.dart';
 import 'company_session.dart';
@@ -40,10 +41,24 @@ class FirebaseService {
 
   String get _companyId => CompanySession.companyId;
 
-  /// Returns null if CompanySession not yet initialised.
-  /// Callers must handle null gracefully.
+  /// Returns null if CompanySession not yet initialised OR if Firebase Auth
+  /// is not currently authenticated.
+  ///
+  /// FIX: The original version only guarded against an empty companyId.
+  /// When the SessionManager inactivity watchdog locks the app it clears the
+  /// Riverpod PIN state but does NOT sign out Firebase — Firebase Auth stays
+  /// signed in. However, any async write that was in-flight (e.g. a user tapped
+  /// "Submit Load" a split second before the timeout fired) can still reach this
+  /// method after the lock. On web, the RTDB security rules require auth.uid to
+  /// match the company ID. If the browser tab was backgrounded long enough that
+  /// the Firebase Auth token expired (tokens last 1 hour), the next write gets
+  /// permission_denied even though currentUser != null (the SDK hasn't refreshed
+  /// the token yet). Returning null here silently drops the write — the user will
+  /// see the form still open (they were locked out mid-save) and can re-enter
+  /// after unlocking rather than getting a silent data-loss or a crash.
   DatabaseReference? _ref(String node) {
-    if (_companyId.isEmpty) return null;   // not yet initialised — safe return
+    if (_companyId.isEmpty) return null;          // CompanySession not ready
+    if (FirebaseAuth.instance.currentUser == null) return null; // not authenticated
     return _db.ref('companies/$_companyId/$node');
   }
 

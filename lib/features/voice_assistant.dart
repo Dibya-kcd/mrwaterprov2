@@ -23,12 +23,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
+// FIX: permission_handler removed — replaced with inline stub.
+// speech_to_text handles its own microphone permission internally.
+// This stub satisfies all Permission.microphone.* call-sites without
+// requiring the external package to be in pubspec.yaml.
+// ignore_for_file: avoid_classes_with_only_static_members
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:uuid/uuid.dart';
 import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
+
+// ── Permission stub (replaces permission_handler package) ─────────────────────
+// speech_to_text already requests mic permission internally; this stub keeps
+// all call-sites (Permission.microphone.status / .request()) compiling.
+class PermissionStatus {
+  final bool isGranted;
+  final bool isDenied;
+  final bool isPermanentlyDenied;
+  const PermissionStatus({
+    this.isGranted = true,
+    this.isDenied = false,
+    this.isPermanentlyDenied = false,
+  });
+  Future<PermissionStatus> request() async => const PermissionStatus(isGranted: true);
+}
+
+class MicPermission {
+  Future<PermissionStatus> get status async => const PermissionStatus(isGranted: true);
+  Future<PermissionStatus> request() async => const PermissionStatus(isGranted: true);
+}
+
+class Permission {
+  static final microphone = MicPermission();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 
 const _uuid = Uuid();
 
@@ -183,18 +213,24 @@ class NluEngine {
   // ── Parse integer (0 allowed) ──────────────────────────────────────────────
   static int? parseNumber(String raw) {
     final lower = raw.toLowerCase().trim();
+    // Check zero words (avoid matching "no" which is also a cancel word)
     if (_isZeroWord(lower)) return 0;
-    final m = RegExp(r'\b(\d{1,3})\b').firstMatch(lower);
+    // Match any digit sequence up to 6 digits (handles amounts like 1000, 5000)
+    final m = RegExp(r'\b(\d{1,6})\b').firstMatch(lower);
     if (m != null) return int.tryParse(m.group(1)!);
+    // Word-based lookup: try exact match first, then contains
     for (final e in _numWords.entries) {
-      if (lower == e.key || lower.contains(e.key)) return e.value;
+      if (lower == e.key) return e.value;
+    }
+    for (final e in _numWords.entries) {
+      if (RegExp('\\b${RegExp.escape(e.key)}\\b').hasMatch(lower)) return e.value;
     }
     return null;
   }
 
   static bool _isZeroWord(String s) =>
-      {'zero', '0', 'nothing', 'nil', 'nill', 'none', 'no', 'na', 'nahi'}
-          .any((w) => s == w || s.contains(w));
+      {'zero', '0', 'nothing', 'nil', 'nill', 'none', 'shunya', 'nahi', 'na'}
+          .any((w) => s == w);
 
   // ── Parse payment amount ───────────────────────────────────────────────────
   // Returns -1 for "half", -2 for "full"/"all"

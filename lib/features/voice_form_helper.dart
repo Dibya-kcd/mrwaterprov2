@@ -12,12 +12,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:permission_handler/permission_handler.dart';
+// FIX: permission_handler removed. Permission stub is defined in voice_assistant.dart
+// and re-exported via the show clause so call-sites in this file still compile.
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
-import 'voice_assistant.dart' show HindiTranslator, NluEngine;
+// Permission stub exported from voice_assistant
+import 'voice_assistant.dart' show HindiTranslator, NluEngine, Permission, PermissionStatus;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RESULT — what the voice form returns to the calling form

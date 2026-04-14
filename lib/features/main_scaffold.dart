@@ -16,8 +16,97 @@ import 'smart_entry_screen.dart';
 import 'reports_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
-import 'pin_lock_screen.dart';
-import 'app_logo.dart';
+import 'modern_app_logo.dart';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ALIASES — keep the rest of the file using short names
+// FIX: AppLogo, SessionChip, StaffGuard were referenced but never imported.
+//      ModernAppLogo is the real class; we alias it here so all call-sites
+//      compile without any further changes.
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Thin wrapper so call-sites can keep writing `AppLogo(height:…, onDark:…)`.
+class AppLogo extends StatelessWidget {
+  final double height;
+  final bool onDark;
+  const AppLogo({super.key, this.height = 60, this.onDark = false});
+
+  @override
+  Widget build(BuildContext context) => ModernAppLogo(
+        height: height,
+        onDark: onDark,
+        animated: false,
+        showGlow: false,
+      );
+}
+
+/// Shows the currently-logged-in staff member's name as a small chip.
+/// When no staff member is selected (owner mode) it renders nothing.
+class SessionChip extends ConsumerWidget {
+  const SessionChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(sessionUserProvider);
+    if (user == null) return const SizedBox(width: 8);
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        user.name.split(' ').first,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// Guards a screen by checking if the current session user has [permission].
+/// Owner (sessionUser == null) always passes through.
+class StaffGuard extends ConsumerWidget {
+  final String permission;
+  final Widget child;
+  const StaffGuard({super.key, required this.permission, required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(sessionUserProvider);
+    // null = owner, unrestricted
+    if (user == null || user.can(permission)) return child;
+    return _NoAccessPlaceholder(permission: permission);
+  }
+}
+
+class _NoAccessPlaceholder extends StatelessWidget {
+  final String permission;
+  const _NoAccessPlaceholder({required this.permission});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.lock_rounded, size: 48, color: AppColors.inkMuted),
+        const SizedBox(height: 12),
+        Text('Access Restricted',
+            style: GoogleFonts.inter(
+                fontSize: 16, fontWeight: FontWeight.w700,
+                color: AppColors.inkMuted)),
+        const SizedBox(height: 4),
+        Text('You need "$permission" permission.',
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
+      ]),
+    );
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MAIN SCAFFOLD  — top app bar + bottom nav + drawer
@@ -55,7 +144,7 @@ class MainScaffold extends ConsumerWidget {
       const StaffGuard(permission: 'reports',        child: ReportsScreen()),
       const StaffGuard(permission: 'notifications',  child: NotificationsScreen()),
       const StaffGuard(permission: 'settings',       child: SettingsScreen()),
-      const StaffGuard(permission: 'load_unload',          child: LoadUnloadScreen()),
+      const StaffGuard(permission: 'load_unload',    child: LoadUnloadScreen()),
       const StaffGuard(permission: 'expenses',       child: ExpensesScreen()),
       const StaffGuard(permission: 'smart_entry',    child: SmartEntryScreen()),
     ];
@@ -156,7 +245,7 @@ class _MrAppBar extends ConsumerWidget implements PreferredSizeWidget {
         else
           const SizedBox(width: 16),
 
-        // MIDDLE — MrWater logo, big and prominent
+        // MIDDLE — MrWater logo
         Expanded(child: Center(
           child: AppLogo(
             height: compact ? 70.0 : 86.0,
@@ -172,7 +261,7 @@ class _MrAppBar extends ConsumerWidget implements PreferredSizeWidget {
   }
 }
 
-// Profile button — shows admin info panel
+// Profile button
 class _ProfileBtn extends ConsumerWidget {
   final bool isDark;
   final AppSettings settings;
@@ -182,7 +271,7 @@ class _ProfileBtn extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final txns    = ref.watch(transactionsProvider);
-    final notifs  = txns.where((t) => t.balance > 0).length; // pending dues count
+    final notifs  = txns.where((t) => t.balance > 0).length;
 
     return GestureDetector(
       onTap: () => _showProfilePanel(context, ref, isDark),
@@ -232,7 +321,6 @@ class _ProfileSheet extends ConsumerWidget {
     final todayTx   = txns.where((t) => t.date == DateFormat.yMd().format(DateTime.now())).length;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Avatar + name
       Center(child: Column(children: [
         Container(width: 64, height: 64,
           decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
@@ -248,7 +336,6 @@ class _ProfileSheet extends ConsumerWidget {
       ])),
       const SizedBox(height: 20),
 
-      // Quick stats
       Row(children: [
         _infoTile('Customers', '${custs.length}', AppColors.primaryColor(isDark), isDark),
         const SizedBox(width: 8),
@@ -258,7 +345,6 @@ class _ProfileSheet extends ConsumerWidget {
       ]),
       const SizedBox(height: 16),
 
-      // Business info
       _infoRow(Icons.store_rounded, 'Business', settings.businessName, isDark),
       _infoRow(Icons.location_on_rounded, 'Address', settings.address.isNotEmpty ? settings.address : '—', isDark),
       if (settings.gstin.isNotEmpty)
@@ -281,9 +367,6 @@ class _ProfileSheet extends ConsumerWidget {
       TextButton(
         onPressed: () {
           if (Navigator.canPop(context)) Navigator.pop(context);
-          // ── ROLE logout only — Firebase stays signed in ──────────────────
-          // Firebase sign-out is ONLY available from the hidden admin portal.
-          // In-app logout just clears the role session and returns to PIN.
           ref.read(sessionUserProvider.notifier).state = null;
           ref.read(pinUnlockedProvider.notifier).state = false;
         },
@@ -335,7 +418,7 @@ class _NavItem {
   final int tab;
   final IconData icon;
   final String label;
-  final String? permission; // null = always visible (e.g. Settings)
+  final String? permission;
   const _NavItem(this.tab, this.icon, this.label, [this.permission]);
 }
 
@@ -350,7 +433,7 @@ const _navItems = <_NavItem>[
   _NavItem(kTabSmartEntry,    Icons.document_scanner_rounded,       'Smart Entry',   'smart_entry'),
   _NavItem(kTabReports,       Icons.assessment_rounded,             'Reports',       'reports'),
   _NavItem(kTabNotifications, Icons.notifications_rounded,          'Notifications', 'notifications'),
-  _NavItem(kTabSettings,      Icons.settings_rounded,               'Settings'),     // always visible
+  _NavItem(kTabSettings,      Icons.settings_rounded,               'Settings'),
 ];
 
 class _BurgerDrawer extends ConsumerWidget {
@@ -369,7 +452,6 @@ class _BurgerDrawer extends ConsumerWidget {
     return Drawer(
       backgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
       child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Drawer header
         Container(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -400,7 +482,6 @@ class _BurgerDrawer extends ConsumerWidget {
           ]),
         ),
 
-        // Nav items
         Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12),
           children: visibleNav.map((item) {
             final active = currentTab == item.tab;
@@ -443,7 +524,6 @@ class _BurgerDrawer extends ConsumerWidget {
           }).toList(),
         )),
 
-        // Bottom version tag
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Text('MrWater v2.0', style: GoogleFonts.jetBrainsMono(
@@ -455,7 +535,7 @@ class _BurgerDrawer extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BOTTOM NAV — 3 items: Home | [+] Quick Transaction | Alerts
+// BOTTOM NAV
 // ─────────────────────────────────────────────────────────────────────────────
 class _BottomNav extends ConsumerWidget {
   final int tab;
@@ -479,7 +559,6 @@ class _BottomNav extends ConsumerWidget {
       child: Padding(
         padding: EdgeInsets.only(bottom: pb),
         child: Row(children: [
-          // ── Home ─────────────────────────────────────────────────────────
           Expanded(child: GestureDetector(
             onTap: () => ref.read(tabProvider.notifier).state = kTabDashboard,
             behavior: HitTestBehavior.opaque,
@@ -495,7 +574,6 @@ class _BottomNav extends ConsumerWidget {
             ]),
           )),
 
-          // ── Centre + FAB ──────────────────────────────────────────────────
           Expanded(child: GestureDetector(
             onTap: () => showMrSheet(context, title: '⚡ Quick Transaction',
                 builder: (_) => _QuickSheet(isDark: isDark)),
@@ -518,7 +596,6 @@ class _BottomNav extends ConsumerWidget {
             ]),
           )),
 
-          // ── Alerts ────────────────────────────────────────────────────────
           Expanded(child: GestureDetector(
             onTap: () => ref.read(tabProvider.notifier).state = kTabNotifications,
             behavior: HitTestBehavior.opaque,
@@ -539,8 +616,6 @@ class _BottomNav extends ConsumerWidget {
   }
 }
 
-// _QuickFab removed — + button is now embedded in _BottomNav
-
 class _QuickSheet extends ConsumerWidget {
   final bool isDark;
   const _QuickSheet({required this.isDark});
@@ -551,13 +626,9 @@ class _QuickSheet extends ConsumerWidget {
     final okC   = AppColors.successColor(isDark);
 
     return Column(children: [
-      // ── 🎙 Voice Assistant — fastest way to record anything ───────────────
       _qBtn(icon: Icons.mic_rounded, label: 'Voice Assistant',
           sub: 'AI Command Center', color: AppColors.purple, isDark: isDark,
-          onTap: () {
-            Navigator.pop(context);
-            // Future: voice assist
-          }),
+          onTap: () { Navigator.pop(context); }),
       const SizedBox(height: 10),
 
       Divider(height: 1,
@@ -670,10 +741,7 @@ class _Sidebar extends ConsumerWidget {
                 color: isDark ? AppColors.surface2Dark : AppColors.surface2,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: AppLogo(
-                height: 58,
-                onDark: isDark,
-              ),
+              child: AppLogo(height: 58, onDark: isDark),
             ),
           ),
         ),
@@ -716,4 +784,3 @@ class _Sidebar extends ConsumerWidget {
     );
   }
 }
-

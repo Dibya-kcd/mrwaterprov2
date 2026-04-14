@@ -47,6 +47,12 @@ class SessionManager {
   DateTime   _lastActivity = DateTime.now();
   Timer?     _timer;
   WidgetRef? _ref;
+  // FIX: skip the very first watchdog tick after startWatching() is called.
+  // Even though _lastActivity is reset in startWatching(), the first poll fires
+  // after 30 s. If the device clock jumps (e.g. emulator resume, daylight saving)
+  // the idle calculation can overshoot. Skipping tick #1 gives the user at least
+  // 60 s before the first real idle check — negligible for a 5-min timeout.
+  bool _skipNextCheck = false;
 
   // ── Activity tracking ─────────────────────────────────────────────────────
 
@@ -57,13 +63,22 @@ class SessionManager {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Start the inactivity watchdog. Call once after PIN is verified.
+  ///
+  /// FIX: _lastActivity is always reset to DateTime.now() on every call.
+  /// The field is initialised once at class construction. If the device
+  /// spent more than kInactivityTimeout on the splash/PIN screens (e.g. a
+  /// deployed web build left open for > 5 min before login), the stale
+  /// timestamp caused _check() to fire an immediate lock on the very first
+  /// 30-second tick — locking the app right after the user just unlocked it.
+  /// Resetting here guarantees the user always gets a full inactivity window.
   void startWatching(WidgetRef ref) {
     _ref = ref;
     _timer?.cancel();
-    _lastActivity = DateTime.now();
+    _lastActivity = DateTime.now(); // ← always fresh; prevents stale-timestamp instant lock
+    _skipNextCheck = true;          // ← skip first tick (extra safety margin on unlock)
     // Poll every 30 s — lightweight, fast enough to catch a 5-min window.
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => _check());
-    debugPrint('[SessionManager] Inactivity watchdog started');
+    debugPrint('[SessionManager] Inactivity watchdog started (activity timer reset)');
   }
 
   /// Stop the watchdog. Call when the app is disposed or the user is locked.
@@ -75,6 +90,12 @@ class SessionManager {
   }
 
   void _check() {
+    // FIX: skip the first tick after startWatching() for a safe startup margin.
+    if (_skipNextCheck) {
+      _skipNextCheck = false;
+      debugPrint('[SessionManager] First watchdog tick skipped (startup grace)');
+      return;
+    }
     final idle = DateTime.now().difference(_lastActivity);
     if (idle >= kInactivityTimeout) {
       debugPrint('[SessionManager] Inactivity timeout — locking app');

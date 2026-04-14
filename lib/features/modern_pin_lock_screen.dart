@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/models/staff_member.dart'; // FIX: was missing, caused StaffMember undefined error
 import '../core/providers/staff_provider.dart';
 import '../core/services/rtdb_user_datasource.dart';
 import '../core/theme/app_colors.dart';

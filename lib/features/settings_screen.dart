@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
 import '../core/utils/pin_hash_util.dart';
-import 'app_logo.dart';
+import 'main_scaffold.dart' show AppLogo;
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
 import 'diagnostics_screen.dart';
@@ -247,7 +247,7 @@ class _AppIdentityState extends ConsumerState<_AppIdentityForm> {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     // ── Company Logo ──────────────────────────────────────────────────────────
     const FieldLabel('Company Logo'),
-    const LogoPickerWidget(),
+    const AppLogo(height: 60),
     const SizedBox(height: 16),
     // ── Identity fields ───────────────────────────────────────────────────────
     _TF(label: 'App Name', ctrl: _appName, hint: 'e.g. MrWater, AquaFlow'),

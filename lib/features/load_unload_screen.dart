@@ -877,7 +877,10 @@ class _EditTotalsFormState extends ConsumerState<_EditTotalsForm> {
 }
 
 // ── Shared form widgets ───────────────────────────────────────────────────────
-class _NumEntry extends StatelessWidget {
+// _NumEntry — editable jar counter:
+//   • Tap [ - ] / [ + ] to decrement / increment by 1
+//   • Long-press OR tap the number itself to type any value directly
+class _NumEntry extends StatefulWidget {
   final String label;
   final Color color;
   final bool isDark;
@@ -885,40 +888,171 @@ class _NumEntry extends StatelessWidget {
   final ValueChanged<int> onChanged;
   const _NumEntry({required this.label, required this.color,
       required this.isDark, required this.value, required this.onChanged});
+
+  @override
+  State<_NumEntry> createState() => _NumEntryState();
+}
+
+class _NumEntryState extends State<_NumEntry> {
+  bool _editing = false;
+  late TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: '${widget.value}');
+  }
+
+  @override
+  void didUpdateWidget(_NumEntry old) {
+    super.didUpdateWidget(old);
+    // Keep display in sync when parent rebuilds (but don't fight active editor)
+    if (!_editing && old.value != widget.value) {
+      _ctrl.text = '${widget.value}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _startEditing() {
+    setState(() {
+      _editing = true;
+      _ctrl.text = '${widget.value}';
+      _ctrl.selection =
+          TextSelection(baseOffset: 0, extentOffset: _ctrl.text.length);
+    });
+  }
+
+  void _commitEdit() {
+    final parsed = int.tryParse(_ctrl.text.trim()) ?? widget.value;
+    final clamped = parsed < 0 ? 0 : parsed;
+    setState(() => _editing = false);
+    widget.onChanged(clamped);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final color  = widget.color;
+
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
+        border: Border.all(
+          color: _editing ? color : color.withValues(alpha: 0.22),
+          width: _editing ? 1.8 : 1.0,
+        ),
       ),
       child: Column(children: [
-        Text(label, style: GoogleFonts.inter(
+        Text(widget.label, style: GoogleFonts.inter(
             fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         const SizedBox(height: 8),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+
+          // ── [ - ] button ────────────────────────────────────────────────
           GestureDetector(
-            onTap: value > 0 ? () => onChanged(value - 1) : null,
-            child: Container(width: 32, height: 32,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Icon(Icons.remove_rounded, size: 16, color: color)),
+            onTap: widget.value > 0
+                ? () {
+                    if (_editing) _commitEdit();
+                    widget.onChanged(widget.value - 1);
+                  }
+                : null,
+            child: Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                color: widget.value > 0
+                    ? color.withValues(alpha: 0.14)
+                    : color.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.remove_rounded, size: 18,
+                  color: widget.value > 0
+                      ? color
+                      : color.withValues(alpha: 0.30)),
+            ),
           ),
+
           const SizedBox(width: 10),
-          SizedBox(width: 40, child: Text('$value', textAlign: TextAlign.center,
-              style: GoogleFonts.jetBrainsMono(
-                  fontSize: 18, fontWeight: FontWeight.w800, color: color))),
-          const SizedBox(width: 10),
+
+          // ── Editable value area ──────────────────────────────────────────
+          // Tap to activate inline text field; otherwise shows bold number.
           GestureDetector(
-            onTap: () => onChanged(value + 1),
-            child: Container(width: 32, height: 32,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Icon(Icons.add_rounded, size: 16, color: color)),
+            onTap: _startEditing,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 52,
+              height: 36,
+              decoration: BoxDecoration(
+                color: _editing
+                    ? color.withValues(alpha: 0.10)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: _editing
+                  ? Center(
+                      child: TextField(
+                        controller: _ctrl,
+                        autofocus: true,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.jetBrainsMono(
+                            fontSize: 18, fontWeight: FontWeight.w800,
+                            color: color),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        onSubmitted: (_) => _commitEdit(),
+                        onTapOutside: (_) => _commitEdit(),
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        '${widget.value}',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.jetBrainsMono(
+                            fontSize: 18, fontWeight: FontWeight.w800,
+                            color: color),
+                      ),
+                    ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // ── [ + ] button ────────────────────────────────────────────────
+          GestureDetector(
+            onTap: () {
+              if (_editing) _commitEdit();
+              widget.onChanged(widget.value + 1);
+            },
+            child: Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.add_rounded, size: 18, color: color),
+            ),
           ),
         ]),
+
+        // Hint shown only while editing
+        if (_editing)
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Text('Tap ✓ or press Enter',
+                style: GoogleFonts.inter(
+                    fontSize: 9,
+                    color: color.withValues(alpha: 0.65),
+                    fontStyle: FontStyle.italic)),
+          ),
       ]),
     );
   }
