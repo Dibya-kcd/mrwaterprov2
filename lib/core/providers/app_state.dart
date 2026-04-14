@@ -858,7 +858,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     });
   }
 
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — please sign in again.');
+    }
+  }
+
   Future<void> save(AppSettings s) async {
+    _assertAuth();
     await FirebaseService.instance.write(FirebaseConfig.nodeSettings, s.toJson());
   }
 }
@@ -1042,7 +1049,14 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
 
   /// Add a new customer — updates local state immediately (optimistic),
   /// then persists to Firebase. Firebase listener confirms asynchronously.
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — please sign in again.');
+    }
+  }
+
   Future<void> add(Customer c) async {
+    _assertAuth();
     // Optimistic: inject into local state immediately so all watching screens
     // rebuild without waiting for Firebase roundtrip (~100-500 ms).
     if (!state.any((x) => x.id == c.id)) {
@@ -1055,6 +1069,7 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
   /// then persists to Firebase. All ref.watch(customersProvider) screens
   /// rebuild instantly: Customer list, Payments/Dues/Credit, Ledger header.
   Future<void> update(Customer c) async {
+    _assertAuth();
     // Optimistic local patch — replaces the one matching customer in state.
     state = [
       for (final x in state)
@@ -1268,7 +1283,14 @@ class TransactionsNotifier extends StateNotifier<List<JarTransaction>> {
     await FirebaseService.instance.removeChild(FirebaseConfig.nodeLedgerEntries, 'le_$txId');
   }
 
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — please sign in again.');
+    }
+  }
+
   Future<void> add(JarTransaction tx) async {
+    _assertAuth();
     await FirebaseService.instance.setChild(FirebaseConfig.nodeTransactions, tx.id, tx.toJson());
     // Step 1: customer record — jar counts (coolOut/petOut) and payment balance updated
     //   balance formula: balance -= (billedAmount - amountCollected)
@@ -1289,6 +1311,7 @@ class TransactionsNotifier extends StateNotifier<List<JarTransaction>> {
   }
 
   Future<void> edit(JarTransaction old, JarTransaction neu, {String editNote = ''}) async {
+    _assertAuth();
     // Step 1: Snapshot old, build updated tx with history
     final history = TxEditHistory.from(old, editedBy: 'Admin', note: editNote);
     final neuWithHistory = neu.copyWith(
@@ -1332,6 +1355,7 @@ class TransactionsNotifier extends StateNotifier<List<JarTransaction>> {
   }
 
   Future<void> delete(JarTransaction tx) async {
+    _assertAuth();
     // Step 1: Remove base transaction document.
     // Revisions + inventory movements + payment records linked via txId
     // are intentionally KEPT — they form the permanent audit trail.
@@ -1544,7 +1568,14 @@ class LoadUnloadNotifier extends StateNotifier<LoadUnloadState> {
   void changeVehicle(String id) => state = state.copyWith(vehicleId: id);
 
   /// Load: filled jars leave warehouse onto truck → warehouse stock ↓.
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — cannot save trip data.');
+    }
+  }
+
   Future<void> recordLoad({required int cool, required int pet, WidgetRef? ref}) async {
+    _assertAuth();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final trip = TripEntry(
       id: _uuid.v4(),
@@ -1729,7 +1760,14 @@ class DayLogNotifier extends StateNotifier<List<DayLog>> {
   }
 
   /// Add jars to today's load total (cumulative)
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — cannot save load/unload data.');
+    }
+  }
+
   Future<void> addLoad({required int cool, required int pet}) async {
+    _assertAuth();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final existing = todayLog ?? DayLog(date: today);
     final updated = existing.copyWith(
@@ -1747,6 +1785,7 @@ class DayLogNotifier extends StateNotifier<List<DayLog>> {
     required int coolEmpty, required int petEmpty,
     required int coolFilled, required int petFilled,
   }) async {
+    _assertAuth();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final existing = todayLog ?? DayLog(date: today);
     final updated = existing.copyWith(
@@ -1766,6 +1805,7 @@ class DayLogNotifier extends StateNotifier<List<DayLog>> {
     required int coolFilled, required int petFilled,
     String? note,
   }) async {
+    _assertAuth();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final updated = DayLog(
       date: today,
@@ -1893,7 +1933,14 @@ class StaffNotifier extends StateNotifier<List<StaffMember>> {
 
   void reinit() => _init();
 
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — cannot save staff data.');
+    }
+  }
+
   Future<void> add(StaffMember s) async {
+    _assertAuth();
     await RTDBUserDataSource.instance.setUser(
         CompanySession.companyId, s.id, s.toJson());
   }

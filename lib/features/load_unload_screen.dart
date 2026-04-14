@@ -638,18 +638,26 @@ class _LoadFormState extends ConsumerState<_LoadForm> {
         loading: _saving,
         onTap: (hasAny && !_saving) ? () async {
           setState(() => _saving = true);
-          // Additive: add to existing loaded totals
-          await ref.read(dayLogProvider.notifier).setExact(
-            coolLoaded:  widget.log.coolLoaded  + _cl,
-            petLoaded:   widget.log.petLoaded   + _pl,
-            coolEmpty:   widget.log.coolEmptyReturned,
-            petEmpty:    widget.log.petEmptyReturned,
-            coolFilled:  widget.log.coolFilledReturned,
-            petFilled:   widget.log.petFilledReturned,
-          );
-          if (context.mounted) {
-            Navigator.pop(context);
-            showToast(context, '✅ ${_cl}C + ${_pl}P loaded', success: true);
+          try {
+            // Additive: add to existing loaded totals
+            await ref.read(dayLogProvider.notifier).setExact(
+              coolLoaded:  widget.log.coolLoaded  + _cl,
+              petLoaded:   widget.log.petLoaded   + _pl,
+              coolEmpty:   widget.log.coolEmptyReturned,
+              petEmpty:    widget.log.petEmptyReturned,
+              coolFilled:  widget.log.coolFilledReturned,
+              petFilled:   widget.log.petFilledReturned,
+            );
+            if (context.mounted) {
+              Navigator.pop(context);
+              showToast(context, '✅ ${_cl}C + ${_pl}P loaded', success: true);
+            }
+          } catch (e) {
+            if (context.mounted) {
+              showToast(context, '❌ Save failed: ${e.toString().replaceAll('StateError: ', '')}', success: false);
+            }
+          } finally {
+            if (mounted) setState(() => _saving = false);
           }
         } : null,
         gradient: hasAny
@@ -742,19 +750,27 @@ class _UnloadFormState extends ConsumerState<_UnloadForm> {
         loading: _saving,
         onTap: (hasAny && !_saving) ? () async {
           setState(() => _saving = true);
-          // Additive: add to existing return totals
-          await ref.read(dayLogProvider.notifier).setExact(
-            coolLoaded:  widget.log.coolLoaded,
-            petLoaded:   widget.log.petLoaded,
-            coolEmpty:   widget.log.coolEmptyReturned  + _ce,
-            petEmpty:    widget.log.petEmptyReturned   + _pe,
-            coolFilled:  widget.log.coolFilledReturned + _cf,
-            petFilled:   widget.log.petFilledReturned  + _pf,
-          );
-          if (context.mounted) {
-            Navigator.pop(context);
-            showToast(context,
-                '✅ ${_ce + _pe} empty  ${_cf + _pf} filled returned', success: true);
+          try {
+            // Additive: add to existing return totals
+            await ref.read(dayLogProvider.notifier).setExact(
+              coolLoaded:  widget.log.coolLoaded,
+              petLoaded:   widget.log.petLoaded,
+              coolEmpty:   widget.log.coolEmptyReturned  + _ce,
+              petEmpty:    widget.log.petEmptyReturned   + _pe,
+              coolFilled:  widget.log.coolFilledReturned + _cf,
+              petFilled:   widget.log.petFilledReturned  + _pf,
+            );
+            if (context.mounted) {
+              Navigator.pop(context);
+              showToast(context,
+                  '✅ ${_ce + _pe} empty  ${_cf + _pf} filled returned', success: true);
+            }
+          } catch (e) {
+            if (context.mounted) {
+              showToast(context, '❌ Save failed: ${e.toString().replaceAll('StateError: ', '')}', success: false);
+            }
+          } finally {
+            if (mounted) setState(() => _saving = false);
           }
         } : null,
         gradient: hasAny
@@ -860,15 +876,23 @@ class _EditTotalsFormState extends ConsumerState<_EditTotalsForm> {
         label: _saving ? 'Saving...' : '✏️ Save Correction',
         onTap: !_saving ? () async {
           setState(() => _saving = true);
-          await ref.read(dayLogProvider.notifier).setExact(
-            coolLoaded: _cl, petLoaded: _pl,
-            coolEmpty: _ce, petEmpty: _pe,
-            coolFilled: _cf, petFilled: _pf,
-            note: _note.trim().isEmpty ? null : _note.trim(),
-          );
-          if (context.mounted) {
-            Navigator.pop(context);
-            showToast(context, '✅ Totals corrected', success: true);
+          try {
+            await ref.read(dayLogProvider.notifier).setExact(
+              coolLoaded: _cl, petLoaded: _pl,
+              coolEmpty: _ce, petEmpty: _pe,
+              coolFilled: _cf, petFilled: _pf,
+              note: _note.trim().isEmpty ? null : _note.trim(),
+            );
+            if (context.mounted) {
+              Navigator.pop(context);
+              showToast(context, '✅ Totals corrected', success: true);
+            }
+          } catch (e) {
+            if (context.mounted) {
+              showToast(context, '❌ Save failed: ${e.toString().replaceAll('StateError: ', '')}', success: false);
+            }
+          } finally {
+            if (mounted) setState(() => _saving = false);
           }
         } : null,
       ),
