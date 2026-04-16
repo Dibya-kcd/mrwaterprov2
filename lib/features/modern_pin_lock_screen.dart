@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../core/models/staff_member.dart'; // FIX: was missing, caused StaffMember undefined error
+import '../core/models/staff_member.dart';
 import '../core/providers/staff_provider.dart';
+import '../core/services/company_session.dart';       // FIX 1: added import
 import '../core/services/rtdb_user_datasource.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/pin_hash_util.dart';
@@ -43,27 +44,23 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
   @override
   void initState() {
     super.initState();
-    
-    // Shake animation for errors
+
     _shakeCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 600));
     _shakeAnim = Tween(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticOut));
-    
-    // Pulse animation for logo
+
     _pulseCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 2000));
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     _pulseCtrl.repeat(reverse: true);
-    
-    // Fade animation for entrance
+
     _fadeCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 1000));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
 
-    // Glow animation
     _glowCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 3000));
     _glowAnim = Tween<double>(begin: 0.3, end: 0.8).animate(
@@ -72,15 +69,17 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
   }
 
   @override
-  void dispose() { 
-    _shakeCtrl.dispose(); 
+  void dispose() {
+    _shakeCtrl.dispose();
     _pulseCtrl.dispose();
     _fadeCtrl.dispose();
     _glowCtrl.dispose();
-    super.dispose(); 
+    super.dispose();
   }
 
+  // FIX 4: only accept digits 0–9; ignore * and #
   void _append(String d) {
+    if (!RegExp(r'^\d$').hasMatch(d)) return;
     if (_pin.length >= 4) return;
     setState(() { _pin += d; _error = null; });
     HapticFeedback.lightImpact();
@@ -102,7 +101,7 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
     final allStaff = ref.read(staffProvider);
     StaffMember? matched;
 
-    // Check staff PINs
+    // ── 1. Check staff PINs ──────────────────────────────────────────────────
     for (final s in allStaff) {
       if (!s.isActive) continue;
 
@@ -114,11 +113,13 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
           storedHash: s.pinHash,
         );
       } else {
+        // Legacy plain-text PIN — auto-upgrade to hash on first match
         pinMatch = s.pin == _pin;
         if (pinMatch) {
           final hashed = s.copyWith(
             pinHash: PinHashUtil.hash(pin: _pin, salt: s.id),
             pinSalt: s.id,
+            pin: '',
           );
           ref.read(staffProvider.notifier).update(hashed);
         }
@@ -130,12 +131,21 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
       }
     }
 
-    // Check owner PIN if Firebase user is authenticated
+    // ── 2. Check owner PIN via Firebase Auth + RTDB ──────────────────────────
+    // FIX 1: use CompanySession.companyId as the first argument (companyId),
+    //        not currentUser.uid — the old code passed uid twice which resolved
+    //        to the wrong RTDB path and silently returned null every time.
     if (matched == null) {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
+        final companyId = CompanySession.companyId;
+        if (companyId.isEmpty) {
+          _wrongPin('App not initialised — please restart');
+          return;
+        }
         try {
-          final ownerData = await RTDBUserDataSource.instance.getUser(currentUser.uid, currentUser.uid);
+          final ownerData = await RTDBUserDataSource.instance
+              .getUser(companyId, currentUser.uid);          // ← FIXED
           if (ownerData != null) {
             final owner = StaffMember.fromJson(ownerData);
             if (owner.isActive && owner.hasPinHash) {
@@ -153,12 +163,22 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
       }
     }
 
+    // ── 3. Resolve session ───────────────────────────────────────────────────
     if (matched != null) {
       HapticFeedback.heavyImpact();
-      ref.read(sessionUserProvider.notifier).state = matched;
+
+      // FIX 3: owner convention is sessionUserProvider == null.
+      // If the owner unlocked, keep sessionUserProvider as null so every
+      // owner-only check (e.g. AdminPanel badge, settings guard) works correctly.
+      if (matched.isOwner) {
+        ref.read(sessionUserProvider.notifier).state = null;
+      } else {
+        ref.read(sessionUserProvider.notifier).state = matched;
+      }
+
       widget.onUnlocked(matched.isOwner);
     } else {
-      _wrongPin('Invalid PIN - try again');
+      _wrongPin('Invalid PIN — try again');
     }
   }
 
@@ -229,11 +249,10 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // ── Top Section (Logo) ─────────────────────────────
+                            // ── Top: Logo ──────────────────────────────────
                             Column(
                               children: [
                                 SizedBox(height: h * 0.06),
-                                // Animated Logo with glow effect
                                 AnimatedBuilder(
                                   animation: Listenable.merge([_pulseAnim, _glowAnim]),
                                   builder: (context, child) {
@@ -243,11 +262,9 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                         onLongPress: _openAdminPortal,
                                         child: Column(
                                           children: [
-                                            // Stack for Logo and Glow
                                             Stack(
                                               alignment: Alignment.center,
                                               children: [
-                                                // Glow effect
                                                 Container(
                                                   width: 120,
                                                   height: 120,
@@ -261,7 +278,6 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                                     shape: BoxShape.circle,
                                                   ),
                                                 ),
-                                                // Main logo container
                                                 Container(
                                                   width: 120,
                                                   height: 120,
@@ -315,7 +331,9 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                               style: GoogleFonts.inter(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w500,
-                                                color: isDark ? Colors.white.withValues(alpha: 0.7) : const Color(0xFF8E8E93),
+                                                color: isDark
+                                                    ? Colors.white.withValues(alpha: 0.7)
+                                                    : const Color(0xFF8E8E93),
                                               ),
                                             ),
                                           ],
@@ -327,7 +345,7 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                               ],
                             ),
 
-                            // ── Middle Section (PIN Display) ───────────────────
+                            // ── Middle: PIN dots ───────────────────────────
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 24),
                               child: AnimatedBuilder(
@@ -347,7 +365,9 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                           style: GoogleFonts.inter(
                                             fontSize: 18,
                                             fontWeight: FontWeight.w700,
-                                            color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1C1C1E),
+                                            color: isDark
+                                                ? Colors.white.withValues(alpha: 0.9)
+                                                : const Color(0xFF1C1C1E),
                                           ),
                                         ),
                                         const SizedBox(height: 32),
@@ -370,34 +390,28 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                                           ? primary
                                                           : isDark
                                                               ? Colors.white.withValues(alpha: 0.3)
-                                                              : const Color(0xFFD1D1D6),
-                                                  width: filled ? 3 : 2,
+                                                              : Colors.black.withValues(alpha: 0.2),
+                                                  width: 2,
                                                 ),
-                                                boxShadow: filled
-                                                    ? [
-                                                        BoxShadow(
-                                                          color: primary.withValues(alpha: 0.5),
-                                                          blurRadius: 12,
-                                                          offset: const Offset(0, 4),
-                                                        ),
-                                                      ]
-                                                    : null,
                                               ),
                                             );
                                           }),
                                         ),
                                         const SizedBox(height: 20),
                                         AnimatedSwitcher(
-                                          duration: const Duration(milliseconds: 400),
+                                          duration: const Duration(milliseconds: 200),
                                           child: _error != null
                                               ? Container(
-                                                  key: const ValueKey('error'),
-                                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                                  key: ValueKey(_error),
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 16, vertical: 10),
                                                   decoration: BoxDecoration(
-                                                    color: AppColors.dangerColor(isDark).withValues(alpha: 0.1),
+                                                    color: AppColors.dangerColor(isDark)
+                                                        .withValues(alpha: 0.1),
                                                     borderRadius: BorderRadius.circular(16),
                                                     border: Border.all(
-                                                      color: AppColors.dangerColor(isDark).withValues(alpha: 0.3),
+                                                      color: AppColors.dangerColor(isDark)
+                                                          .withValues(alpha: 0.3),
                                                     ),
                                                   ),
                                                   child: Row(
@@ -420,7 +434,8 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                                     ],
                                                   ),
                                                 )
-                                              : const SizedBox(key: ValueKey('empty'), height: 40),
+                                              : const SizedBox(
+                                                  key: ValueKey('empty'), height: 40),
                                         ),
                                       ],
                                     ),
@@ -429,7 +444,7 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                               ),
                             ),
 
-                            // ── Bottom Section (Keypad) ────────────────────────
+                            // ── Bottom: Keypad ─────────────────────────────
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: w * 0.08),
                               child: Column(
@@ -438,6 +453,8 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                     ['1', '2', '3'],
                                     ['4', '5', '6'],
                                     ['7', '8', '9'],
+                                    // FIX 4: * and # are kept for layout but _append()
+                                    // now ignores non-digit characters — no silent bug.
                                     ['*', '0', '#'],
                                   ])
                                     Padding(
@@ -458,9 +475,9 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                         }).toList(),
                                       ),
                                     ),
-                                  
+
                                   const SizedBox(height: 16),
-                                  
+
                                   // Action buttons
                                   Row(
                                     children: [
@@ -490,22 +507,25 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                       ),
                                     ],
                                   ),
-                                  
+
                                   const SizedBox(height: 24),
 
-                                  // Owner login button
+                                  // Owner login button (visible only when Firebase authenticated)
                                   if (isFirebaseAuthed)
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 16),
                                       child: GestureDetector(
                                         onTap: _ownerLogin,
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 24, vertical: 16),
                                           decoration: BoxDecoration(
                                             color: Colors.transparent,
                                             borderRadius: BorderRadius.circular(24),
                                             border: Border.all(
-                                              color: isDark ? Colors.white.withValues(alpha: 0.3) : const Color(0xFFD1D1D6),
+                                              color: isDark
+                                                  ? Colors.white.withValues(alpha: 0.3)
+                                                  : const Color(0xFFD1D1D6),
                                               width: 1.5,
                                             ),
                                           ),
@@ -515,7 +535,9 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                               Icon(
                                                 Icons.shield_rounded,
                                                 size: 16,
-                                                color: isDark ? Colors.white.withValues(alpha: 0.7) : const Color(0xFF8E8E93),
+                                                color: isDark
+                                                    ? Colors.white.withValues(alpha: 0.7)
+                                                    : const Color(0xFF8E8E93),
                                               ),
                                               const SizedBox(width: 8),
                                               Text(
@@ -523,7 +545,9 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                                 style: GoogleFonts.inter(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w600,
-                                                  color: isDark ? Colors.white.withValues(alpha: 0.7) : const Color(0xFF8E8E93),
+                                                  color: isDark
+                                                      ? Colors.white.withValues(alpha: 0.7)
+                                                      : const Color(0xFF8E8E93),
                                                 ),
                                               ),
                                             ],
@@ -532,7 +556,7 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                       ),
                                     ),
 
-                                  // Hidden admin hint
+                                  // Hidden admin hint (shown only when NOT Firebase authenticated)
                                   if (!isFirebaseAuthed)
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 16),
@@ -540,11 +564,13 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
                                         'Admin? Hold logo for 2 seconds',
                                         style: GoogleFonts.inter(
                                           fontSize: 12,
-                                          color: isDark ? Colors.white.withValues(alpha: 0.4) : const Color(0xFFC7C7CC),
+                                          color: isDark
+                                              ? Colors.white.withValues(alpha: 0.4)
+                                              : const Color(0xFFC7C7CC),
                                         ),
                                       ),
                                     ),
-                                  
+
                                   SizedBox(height: h * 0.04),
                                 ],
                               ),
@@ -564,7 +590,7 @@ class _ModernPinLockScreenState extends ConsumerState<ModernPinLockScreen>
   }
 }
 
-// Modern key button component
+// ── Modern key button ─────────────────────────────────────────────────────────
 class _ModernKeyButton extends StatefulWidget {
   final String text;
   final VoidCallback onTap;
@@ -599,7 +625,9 @@ class _ModernKeyButtonState extends State<_ModernKeyButton>
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
     _colorAnimation = ColorTween(
-      begin: widget.isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+      begin: widget.isDark
+          ? Colors.white.withValues(alpha: 0.05)
+          : Colors.black.withValues(alpha: 0.03),
       end: widget.primary.withValues(alpha: 0.1),
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
@@ -612,13 +640,18 @@ class _ModernKeyButtonState extends State<_ModernKeyButton>
 
   @override
   Widget build(BuildContext context) {
+    // FIX 4: visually dim * and # to signal they are non-functional layout keys
+    final isDecorative = widget.text == '*' || widget.text == '#';
+
     return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _controller.reverse(),
+      onTapDown: isDecorative ? null : (_) => _controller.forward(),
+      onTapUp: isDecorative
+          ? null
+          : (_) {
+              _controller.reverse();
+              widget.onTap();
+            },
+      onTapCancel: isDecorative ? null : () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: Listenable.merge([_scaleAnimation, _colorAnimation]),
         builder: (context, child) {
@@ -627,14 +660,18 @@ class _ModernKeyButtonState extends State<_ModernKeyButton>
             child: Container(
               height: 70,
               decoration: BoxDecoration(
-                color: _colorAnimation.value,
+                color: isDecorative
+                    ? Colors.transparent
+                    : _colorAnimation.value,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: widget.isDark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.black.withValues(alpha: 0.08),
-                ),
-                boxShadow: _controller.isAnimating
+                border: isDecorative
+                    ? null
+                    : Border.all(
+                        color: widget.isDark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.08),
+                      ),
+                boxShadow: (!isDecorative && _controller.isAnimating)
                     ? [
                         BoxShadow(
                           color: widget.primary.withValues(alpha: 0.3),
@@ -646,7 +683,7 @@ class _ModernKeyButtonState extends State<_ModernKeyButton>
               ),
               child: Center(
                 child: Text(
-                  widget.text,
+                  isDecorative ? '' : widget.text,
                   style: GoogleFonts.inter(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
@@ -662,7 +699,7 @@ class _ModernKeyButtonState extends State<_ModernKeyButton>
   }
 }
 
-// Modern action button component
+// ── Modern action button ──────────────────────────────────────────────────────
 class _ModernActionButton extends StatefulWidget {
   final String text;
   final VoidCallback onTap;
