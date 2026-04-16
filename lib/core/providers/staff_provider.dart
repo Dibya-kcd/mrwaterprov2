@@ -49,7 +49,15 @@ class StaffNotifier extends StateNotifier<List<StaffMember>> {
 
   void reinit() => _init();
 
+  void _assertAuth() {
+    if (FirebaseAuth.instance.currentUser == null ||
+        CompanySession.companyId.isEmpty) {
+      throw StateError('Not authenticated — cannot save staff data.');
+    }
+  }
+
   Future<void> add(StaffMember s) async {
+    _assertAuth();
     await RTDBUserDataSource.instance.setUser(
         CompanySession.companyId, s.id, s.toJson());
   }

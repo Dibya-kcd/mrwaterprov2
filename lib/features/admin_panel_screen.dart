@@ -6,6 +6,7 @@ import '../core/providers/app_state.dart';
 import '../core/services/company_session.dart';
 import '../core/services/session_manager.dart';
 import '../core/theme/app_colors.dart';
+import '../shared/widgets/shared_widgets.dart';
 import '../features/settings_screen.dart';
 
 class AdminPanelScreen extends ConsumerWidget {
@@ -27,12 +28,14 @@ class AdminPanelScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D1117) : const Color(0xFFF0F4FA),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: Material( // FIX: wrap body content in Material to provide text style context
+        color: Colors.transparent,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
 
               // ── Hero / Welcome card ──────────────────────────────────────
               Container(
@@ -155,9 +158,11 @@ class AdminPanelScreen extends ConsumerWidget {
                 subtitle: 'Add staff, set PINs and manage permissions.',
                 color: primary,
                 isDark: isDark,
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const SettingsScreen())),
+                onTap: () {
+                  showMrSheet(context,
+                      title: '👷 Staff Management',
+                      builder: (_) => const StaffForm());
+                },
               ),
               const SizedBox(height: 12),
               _ActionCard(
@@ -166,7 +171,20 @@ class AdminPanelScreen extends ConsumerWidget {
                 subtitle: 'Change the owner PIN used to unlock the app.',
                 color: AppColors.warningColor(isDark),
                 isDark: isDark,
-                onTap: () => _showResetOwnerPin(context),
+                onTap: () {
+                  final owner = ref.read(staffProvider).firstWhere(
+                    (s) => s.isOwner,
+                    orElse: () => StaffMember(
+                      id: FirebaseAuth.instance.currentUser?.uid ?? 'owner',
+                      name: 'Owner',
+                      phone: '',
+                      pin: '0000',
+                    ),
+                  );
+                  showMrSheet(context,
+                      title: '✏️ Edit Owner Profile',
+                      builder: (_) => StaffEditSheet(existing: owner));
+                },
               ),
               const SizedBox(height: 12),
               _ActionCard(
@@ -265,27 +283,7 @@ class AdminPanelScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showResetOwnerPin(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Reset owner PIN',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w800)),
-        content: Text(
-            'Owner PIN reset will be available in the next update.',
-            style: GoogleFonts.inter(
-                fontSize: 13, color: AppColors.inkMuted, height: 1.4)),
-        actions: [
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK')),
-        ],
-      ),
+      ), // Material
     );
   }
 

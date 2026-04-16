@@ -19,7 +19,7 @@ import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
 // Permission stub exported from voice_assistant
-import 'voice_assistant.dart' show HindiTranslator, NluEngine, Permission, PermissionStatus;
+import 'voice_assistant.dart' show HindiTranslator, NluEngine, Permission;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RESULT — what the voice form returns to the calling form

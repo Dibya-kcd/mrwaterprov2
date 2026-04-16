@@ -366,7 +366,10 @@ class _ProfileSheet extends ConsumerWidget {
       const SizedBox(height: 10),
       TextButton(
         onPressed: () {
-          if (Navigator.canPop(context)) Navigator.pop(context);
+          // 1. Pop the current sheet
+          Navigator.pop(context);
+          
+          // 2. Clear sessions and lock the screen
           ref.read(sessionUserProvider.notifier).state = null;
           ref.read(pinUnlockedProvider.notifier).state = false;
         },

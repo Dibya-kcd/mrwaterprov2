@@ -11,9 +11,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/models/staff_member.dart';
+import 'core/models/user_role.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/staff_provider.dart';
 import 'core/services/company_session.dart';
+import 'core/services/rtdb_user_datasource.dart';
 import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
 import 'core/theme/app_theme.dart';
@@ -198,17 +200,9 @@ class _AppGateState extends ConsumerState<_AppGate> {
   void _onOpenAdminPortal() => _goto(_Screen.adminPortal);
 
   void _onAdminAuthenticated({required bool goDirectly}) {
-    if (!mounted) return;
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) _initOwnerSession(user);
-    ref.read(sessionUserProvider.notifier).state = null;
-    ref.read(pinUnlockedProvider.notifier).state = true;
-    SessionManager.instance.startWatching(ref);
-    SessionManager.instance.persistUnlocked();
+    _onPinUnlocked(true);
     if (goDirectly) {
       _goto(_Screen.adminPanel);
-    } else {
-      _goto(_Screen.app);
     }
   }
 
@@ -217,18 +211,25 @@ class _AppGateState extends ConsumerState<_AppGate> {
       CompanySession.init(user.uid,
           name: user.displayName ?? user.email ?? '');
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // FIX: ensure staff provider is watching the correct company ID node
+    ref.read(staffProvider.notifier).reinit();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final active =
-          ref.read(staffProvider).where((s) => s.isActive).toList();
-      if (active.isEmpty) {
+
+      // FIX: check if owner record already exists before adding/resetting it
+      final existing = await RTDBUserDataSource.instance
+          .getUser(CompanySession.companyId, user.uid);
+
+      if (existing == null) {
         ref.read(staffProvider.notifier).add(StaffMember(
           id:          user.uid,
           name:        user.displayName ?? 'Owner',
           phone:       user.phoneNumber ?? '',
           pin:         '0000',
           isActive:    true,
-          permissions: [
+          role:        UserRole.owner, // FIX: explicitly set as owner
+          permissions: const [
             'dashboard', 'transactions', 'customers', 'inventory',
             'load_unload', 'payments', 'reports', 'notifications',
             'settings', 'expenses', 'smart_entry',
@@ -241,15 +242,15 @@ class _AppGateState extends ConsumerState<_AppGate> {
   @override
   Widget build(BuildContext context) {
     final pinUnlocked = ref.watch(pinUnlockedProvider);
-    if (!pinUnlocked && _screen == _Screen.app) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _goto(_Screen.pin);
-      });
-    }
+    
+    // Determine which screen to show based on state
+    final effectiveScreen = (!pinUnlocked && _screen == _Screen.app) 
+        ? _Screen.pin 
+        : _screen;
 
     return AnimatedSwitcher(
-      duration: Duration.zero,
-      child: switch (_screen) {
+      duration: const Duration(milliseconds: 300), // Add a small transition
+      child: switch (effectiveScreen) {
 
         _Screen.splash => ModernSplashScreen(
             key: const ValueKey('splash'),

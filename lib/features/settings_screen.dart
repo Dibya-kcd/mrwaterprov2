@@ -83,7 +83,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           id: 'staff', title: '👷 Staff Access', expanded: _expanded == 'staff',
           onToggle: () => setState(() => _expanded = _expanded == 'staff' ? null : 'staff'),
           child: ref.watch(sessionUserProvider) == null
-              ? const _StaffForm()
+              ? const StaffForm()
               : const _StaffAccessReadOnly(),
         ),
 
@@ -825,8 +825,8 @@ class _InfoBox extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 // STAFF FORM  (inside Settings → Staff Access section)
 // ══════════════════════════════════════════════════════════════════════════════
-class _StaffForm extends ConsumerWidget {
-  const _StaffForm();
+class StaffForm extends ConsumerWidget {
+  const StaffForm({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -858,7 +858,7 @@ class _StaffForm extends ConsumerWidget {
       GestureDetector(
         onTap: () => showMrSheet(context,
             title: '👷 Add Staff Member',
-            builder: (_) => const _StaffEditSheet()),
+            builder: (_) => const StaffEditSheet()),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -1055,7 +1055,7 @@ class _StaffCard extends ConsumerWidget {
           Expanded(child: OutlinedButton.icon(
             onPressed: () => showMrSheet(context,
                 title: '✏️ Edit Staff',
-                builder: (_) => _StaffEditSheet(existing: member)),
+                builder: (_) => StaffEditSheet(existing: member)),
             icon: const Icon(Icons.edit_rounded, size: 14),
             label: const Text('Edit'),
           )),
@@ -1083,14 +1083,14 @@ class _StaffCard extends ConsumerWidget {
 }
 
 // ── Add / Edit staff sheet ────────────────────────────────────────────────────
-class _StaffEditSheet extends ConsumerStatefulWidget {
+class StaffEditSheet extends ConsumerStatefulWidget {
   final StaffMember? existing;
-  const _StaffEditSheet({this.existing});
+  const StaffEditSheet({super.key, this.existing});
   @override
-  ConsumerState<_StaffEditSheet> createState() => _StaffEditSheetState();
+  ConsumerState<StaffEditSheet> createState() => StaffEditSheetState();
 }
 
-class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
+class StaffEditSheetState extends ConsumerState<StaffEditSheet> {
   final _name  = TextEditingController();
   final _phone = TextEditingController();
   final _pin   = TextEditingController();

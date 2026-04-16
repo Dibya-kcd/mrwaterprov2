@@ -2,13 +2,14 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/user_role.dart';
+import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
+export '../models/user_role.dart';
 import '../services/company_session.dart';
-import '../services/rtdb_user_datasource.dart';
 import '../services/firebase_service.dart';
 import '../services/firebase_config.dart';
-import 'package:uuid/uuid.dart';
-import 'package:intl/intl.dart';
+export '../models/staff_member.dart';
+export 'staff_provider.dart';
 
 const _uuid = Uuid();
 String _now() => DateTime.now().toIso8601String();
@@ -1826,166 +1827,6 @@ final dayLogProvider = StateNotifierProvider<DayLogNotifier, List<DayLog>>(
 // STAFF  MODEL + PROVIDER
 // ══════════════════════════════════════════════════════════════════════════════
 
-class StaffMember {
-  final String id;
-  final String name;
-  final String phone;
-  final String pin;
-  final bool isActive;
-  final List<String> permissions;
-  final UserRole role;
-
-  /// SHA-256 hash of the PIN (salt:pin). Stored in Firestore — never plain text.
-  /// Empty string means PIN has NOT been hashed yet (legacy plain-text pin field).
-  final String pinHash;
-
-  /// Per-user random salt used when hashing the PIN. Stored alongside pinHash.
-  /// For new users this is set to the user's UID. For legacy records it is ''.
-  final String pinSalt;
-
-  const StaffMember({
-    required this.id,
-    required this.name,
-    required this.phone,
-    required this.pin,
-    this.isActive = true,
-    this.permissions = const [
-      'dashboard','transactions','customers','inventory','load_unload',
-      'payments','notifications','reports','settings','expenses','smart_entry',
-    ],
-    this.role = UserRole.staff,
-    this.pinHash = '',
-    this.pinSalt = '',
-  });
-
-  bool can(String perm) => permissions.contains(perm);
-
-  bool get hasPinHash => pinHash.isNotEmpty && pinSalt.isNotEmpty;
-  bool get isOwner => role == UserRole.owner;
-
-  StaffMember copyWith({
-    String? name,
-    String? phone,
-    String? pin,
-    bool? isActive,
-    List<String>? permissions,
-    UserRole? role,
-    String? pinHash,
-    String? pinSalt,
-  }) => StaffMember(
-    id: id,
-    name: name ?? this.name,
-    phone: phone ?? this.phone,
-    pin: pin ?? this.pin,
-    isActive: isActive ?? this.isActive,
-    permissions: permissions ?? this.permissions,
-    role: role ?? this.role,
-    pinHash: pinHash ?? this.pinHash,
-    pinSalt: pinSalt ?? this.pinSalt,
-  );
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'phone': phone,
-    'pin': pin,
-    'isActive': isActive,
-    'permissions': permissions,
-    'role': role.value,
-    'pinHash': pinHash,
-    'pinSalt': pinSalt,
-  };
-
-  factory StaffMember.fromJson(Map<String, dynamic> j) => StaffMember(
-    id: _asString(j['id'], fallback: _uuid.v4()),
-    name: _asString(j['name'], fallback: 'Staff'),
-    phone: _asString(j['phone']),
-    pin: _asString(j['pin']),
-    isActive: _asBool(j['isActive'], fallback: true),
-    permissions: List<String>.from(j['permissions'] ?? [
-      'dashboard','transactions','customers','inventory','load_unload',
-      'payments','notifications','reports','settings','expenses','smart_entry',
-    ]),
-    role: UserRoleX.fromString(_asString(j['role'], fallback: 'STAFF')),
-    pinHash: _asString(j['pinHash']),
-    pinSalt: _asString(j['pinSalt']),
-  );
-}
-
-class StaffNotifier extends StateNotifier<List<StaffMember>> {
-  StaffNotifier() : super([]) { Future.microtask(_init); }
-
-  StreamSubscription? _sub;
-
-  void _init() {
-    _sub?.cancel();
-    if (CompanySession.companyId.isEmpty) {
-      state = [];
-      return;
-    }
-
-    _sub = RTDBUserDataSource.instance
-        .watchUsers(CompanySession.companyId)
-        .listen((documents) {
-      if (!mounted) return;
-      state = documents.map((e) => StaffMember.fromJson(_castMap(e))).toList();
-    });
-  }
-
-  void reinit() => _init();
-
-  void _assertAuth() {
-    if (FirebaseAuth.instance.currentUser == null || CompanySession.companyId.isEmpty) {
-      throw StateError('Not authenticated — cannot save staff data.');
-    }
-  }
-
-  Future<void> add(StaffMember s) async {
-    _assertAuth();
-    await RTDBUserDataSource.instance.setUser(
-        CompanySession.companyId, s.id, s.toJson());
-  }
-
-  Future<void> update(StaffMember s) async {
-    await RTDBUserDataSource.instance.updateUser(
-        CompanySession.companyId, s.id, s.toJson());
-  }
-
-  Future<void> remove(String id) async {
-    await RTDBUserDataSource.instance.deleteUser(
-        CompanySession.companyId, id);
-  }
-
-  StaffMember? byPin(String pin) {
-    try {
-      return state.firstWhere((s) => s.pin == pin && s.isActive);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
-  }
-}
-
-final staffProvider = StateNotifierProvider<StaffNotifier, List<StaffMember>>(
-    (ref) => StaffNotifier());
-
-// Current session: null = owner, non-null = logged-in staff member
-final sessionUserProvider = StateProvider<StaffMember?>((ref) => null);
-
-// Firebase Auth state: emits current Firebase user (null if not logged in)
-final authStateProvider = StreamProvider<User?>((ref) => FirebaseAuth.instance.authStateChanges());
-
-// Global flag to indicate if the user has passed the PIN screen
-final pinUnlockedProvider = StateProvider<bool>((ref) => false);
-
 // ── Inactivity auto-lock provider ─────────────────────────────────────────────
-// Tracks the last user-activity timestamp.  SessionManager polls this every
-// 30 s and locks the app when idle > kInactivityTimeout (5 min).
-// Call: ref.read(lastActivityProvider.notifier).state = DateTime.now()
-// on every meaningful user interaction, OR use the ActivityDetector wrapper.
-final lastActivityProvider = StateProvider<DateTime>((ref) => DateTime.now());
+// (lastActivityProvider moved to staff_provider.dart)
+// ── End of Providers ─────────────────────────────────────────────────────────
