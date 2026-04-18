@@ -21,13 +21,19 @@ class TransactionsScreen extends ConsumerStatefulWidget {
   ConsumerState<TransactionsScreen> createState() => _TxnScreenState();
 }
 
+// Preset quick-pick options
+enum _DatePreset { today, yesterday, last7, thisMonth, last30, custom }
+
 class _TxnScreenState extends ConsumerState<TransactionsScreen> {
   String _filter = 'All';
   String _search = '';
   late DateTime _from;
   late DateTime _to;
-  bool _datePickerOpen = false;
-  bool _headerExpanded = true;
+  _DatePreset _preset = _DatePreset.today;
+  bool _summaryExpanded = true; // collapsible summary strip
+
+  // ── Fix: controller keeps the visible TextField in sync with state ─────────
+  final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -35,23 +41,303 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
     _resetToToday(); // default = today
   }
 
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   String _fmtDate(DateTime d) => DateFormat('dd MMM').format(d);
   String _fmtFull(DateTime d) => DateFormat('dd MMM yyyy').format(d);
 
-  bool get _isToday {
-    final n = DateTime.now();
-    return _from.year==n.year && _from.month==n.month && _from.day==n.day &&
-           _to.year  ==n.year && _to.month  ==n.month && _to.day  ==n.day;
-  }
-  bool get _isCustomRange => !_isToday;
+  bool get _isCustomRange => _preset == _DatePreset.custom;
 
   void _resetToToday() {
     final now = DateTime.now();
     setState(() {
       _from = DateTime(now.year, now.month, now.day);
       _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      _datePickerOpen = false;
+      _preset = _DatePreset.today;
     });
+  }
+
+  void _applyPreset(_DatePreset p) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    setState(() {
+      _preset = p;
+      switch (p) {
+        case _DatePreset.today:
+          _from = today;
+          _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        case _DatePreset.yesterday:
+          final y = today.subtract(const Duration(days: 1));
+          _from = y;
+          _to   = DateTime(y.year, y.month, y.day, 23, 59, 59);
+        case _DatePreset.last7:
+          _from = today.subtract(const Duration(days: 6));
+          _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        case _DatePreset.thisMonth:
+          _from = DateTime(now.year, now.month, 1);
+          _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        case _DatePreset.last30:
+          _from = today.subtract(const Duration(days: 29));
+          _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        case _DatePreset.custom:
+          break; // handled separately via bottom sheet
+      }
+    });
+  }
+
+
+  // ── Filter bottom sheet — date presets + category ─────────────────────────
+  Future<void> _openFilterSheet() async {
+    final primary = Theme.of(context).colorScheme.primary;
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
+    _DatePreset tmpPreset = _preset;
+    DateTime tmpFrom = _from;
+    DateTime tmpTo   = _to;
+    String tmpFilter = _filter;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setModal) {
+
+        Widget _presetChip(String label, _DatePreset p) {
+          final active = tmpPreset == p;
+          return GestureDetector(
+            onTap: () {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              setModal(() {
+                tmpPreset = p;
+                switch (p) {
+                  case _DatePreset.today:
+                    tmpFrom = today;
+                    tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                  case _DatePreset.yesterday:
+                    final y = today.subtract(const Duration(days: 1));
+                    tmpFrom = y;
+                    tmpTo   = DateTime(y.year, y.month, y.day, 23, 59, 59);
+                  case _DatePreset.last7:
+                    tmpFrom = today.subtract(const Duration(days: 6));
+                    tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                  case _DatePreset.thisMonth:
+                    tmpFrom = DateTime(now.year, now.month, 1);
+                    tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                  case _DatePreset.last30:
+                    tmpFrom = today.subtract(const Duration(days: 29));
+                    tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                  case _DatePreset.custom:
+                    break;
+                }
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: active ? primary.withValues(alpha: 0.12) : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: active ? primary : (isDark ? AppColors.separatorDark : AppColors.separator),
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Text(label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                    color: active ? primary : (isDark ? AppColors.inkDark : AppColors.ink),
+                  )),
+            ),
+          );
+        }
+
+        Widget _catChip(String label, IconData icon, Color? col) {
+          final active = tmpFilter == label;
+          final chipColor = col ?? primary;
+          return GestureDetector(
+            onTap: () => setModal(() => tmpFilter = label),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: active ? chipColor.withValues(alpha: 0.12) : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: active ? chipColor : (isDark ? AppColors.separatorDark : AppColors.separator),
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 13, color: active ? chipColor : AppColors.inkMuted),
+                const SizedBox(width: 6),
+                Text(label, style: GoogleFonts.inter(
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                    color: active ? chipColor : (isDark ? AppColors.inkDark : AppColors.ink))),
+              ]),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Handle + title row
+            Center(child: Container(width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.separatorDark : AppColors.separator,
+                  borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 14),
+            Row(children: [
+              Text('Filters', style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  setModal(() {
+                    tmpPreset = _DatePreset.today;
+                    tmpFilter = 'All';
+                    final now = DateTime.now();
+                    tmpFrom = DateTime(now.year, now.month, now.day);
+                    tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                  });
+                },
+                child: Text('Reset', style: GoogleFonts.inter(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: primary)),
+              ),
+            ]),
+            const SizedBox(height: 18),
+
+            // ── Date section ──────────────────────────────────────────────
+            Text('Date Range', style: GoogleFonts.inter(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: AppColors.inkMuted, letterSpacing: 0.5)),
+            const SizedBox(height: 10),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _presetChip('Today',     _DatePreset.today),
+              _presetChip('Yesterday', _DatePreset.yesterday),
+              _presetChip('This Week', _DatePreset.last7),
+              _presetChip('This Month',_DatePreset.thisMonth),
+              _presetChip('Last 30d',  _DatePreset.last30),
+              // Custom chip
+              GestureDetector(
+                onTap: () async {
+                  DateTime t1 = tmpFrom, t2 = tmpTo;
+                  // show two date pickers inline
+                  final d1 = await showDatePicker(
+                    context: ctx, initialDate: tmpFrom,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                    builder: (c, ch) => Theme(data: Theme.of(c), child: ch!),
+                  );
+                  if (d1 != null) t1 = d1;
+                  if (!ctx.mounted) return; // ignore: use_build_context_synchronously
+                  final d2 = await showDatePicker(
+                    context: ctx, initialDate: tmpTo,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                    builder: (c, ch) => Theme(data: Theme.of(c), child: ch!),
+                  );
+                  if (d2 != null) t2 = DateTime(d2.year, d2.month, d2.day, 23, 59, 59);
+                  setModal(() {
+                    tmpPreset = _DatePreset.custom;
+                    tmpFrom = t1.isBefore(t2) ? t1 : t2;
+                    tmpTo   = t1.isBefore(t2) ? t2 : t1;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: tmpPreset == _DatePreset.custom
+                        ? primary.withValues(alpha: 0.12)
+                        : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: tmpPreset == _DatePreset.custom ? primary
+                          : (isDark ? AppColors.separatorDark : AppColors.separator),
+                      width: tmpPreset == _DatePreset.custom ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.edit_calendar_rounded, size: 13,
+                        color: tmpPreset == _DatePreset.custom ? primary : AppColors.inkMuted),
+                    const SizedBox(width: 6),
+                    Text(tmpPreset == _DatePreset.custom
+                        ? '${_fmtDate(tmpFrom)} – ${_fmtDate(tmpTo)}'
+                        : 'Custom',
+                        style: GoogleFonts.inter(
+                          fontSize: 13, fontWeight: FontWeight.w600,
+                          color: tmpPreset == _DatePreset.custom ? primary
+                              : (isDark ? AppColors.inkDark : AppColors.ink),
+                        )),
+                  ]),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 20),
+
+            // ── Category section ──────────────────────────────────────────
+            Text('Category', style: GoogleFonts.inter(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: AppColors.inkMuted, letterSpacing: 0.5)),
+            const SizedBox(height: 10),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _catChip('All',   Icons.list_rounded,           primary),
+              _catChip('Daily', Icons.local_shipping_rounded, primary),
+              _catChip('Event', Icons.celebration_rounded,    AppColors.purple),
+            ]),
+            const SizedBox(height: 24),
+
+            // ── Apply button ──────────────────────────────────────────────
+            SizedBox(width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _preset = tmpPreset;
+                    _from   = tmpFrom;
+                    _to     = tmpTo;
+                    _filter = tmpFilter;
+                  });
+                  Navigator.pop(ctx);
+                },
+                child: Text('Apply Filters',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15)),
+              ),
+            ),
+          ]),
+        );
+      }),
+    );
+  }
+
+  // ── Clears all active filters + search in one tap ──────────────────────────
+  void _resetAllFilters() {
+    setState(() {
+      _search = '';
+      _filter = 'All';
+    });
+    _resetToToday();
+    _searchCtrl.clear();
+  }
+
+  // ── Clears search only ─────────────────────────────────────────────────────
+  void _clearSearch() {
+    setState(() => _search = '');
+    _searchCtrl.clear();
   }
 
   List<JarTransaction> _buildList(List<JarTransaction> all) {
@@ -87,20 +373,27 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final all   = ref.watch(transactionsProvider);
-    final custs = ref.watch(customersProvider);
-    // Build a fast lookup: customerId → Customer
+    final all     = ref.watch(transactionsProvider);
+    final custs   = ref.watch(customersProvider);
     final custMap = { for (final c in custs) c.id: c };
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
     final primary = Theme.of(context).colorScheme.primary;
-    final list = _buildList(all);
+    final list    = _buildList(all);
 
-    // Collapsed header summary label
-    final String collapsedLabel = _isToday
-        ? 'Today, ${_fmtDate(_from)}'
-        : '${_fmtDate(_from)} – ${_fmtDate(_to)}';
-    final bool hasActiveFilter = _filter != 'All' || _search.isNotEmpty;
+    // Count active filters for badge on filter icon
+    final bool hasDateFilter = _preset != _DatePreset.today;
+    final bool hasCatFilter  = _filter != 'All';
+    final int  activeFilterCount = (hasDateFilter ? 1 : 0) + (hasCatFilter ? 1 : 0);
+
+    // Compact date label for the search row
+    final String dateLabel = switch (_preset) {
+      _DatePreset.today     => 'Today',
+      _DatePreset.yesterday => 'Yesterday',
+      _DatePreset.last7     => 'This Week',
+      _DatePreset.thisMonth => 'This Month',
+      _DatePreset.last30    => 'Last 30d',
+      _DatePreset.custom    => '${_fmtDate(_from)}–${_fmtDate(_to)}',
+    };
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -108,104 +401,178 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Column(children: [
 
-        // ── Sticky collapsed bar (always visible) ──────────────────────────
-        GestureDetector(
-          onTap: () => setState(() => _headerExpanded = !_headerExpanded),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Transactions', style: Theme.of(context).textTheme.headlineLarge),
-                if (!_headerExpanded)
-                  Row(children: [
-                    const Icon(Icons.calendar_today_rounded, size: 11, color: AppColors.inkMuted),
-                    const SizedBox(width: 4),
-                    Text(collapsedLabel,
-                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
-                    if (hasActiveFilter) ...[ 
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(_filter != 'All' ? _filter : _search,
-                            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700,
-                                color: primary)),
-                      ),
-                    ],
-                  ])
-                else
-                  Text('All jar movements & payments',
-                      style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
-              ])),
-              // Count badge
+        // ══════════════════════════════════════════════════════════════════
+        // STICKY HEADER
+        // ══════════════════════════════════════════════════════════════════
+        Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+            // ── Title + count ────────────────────────────────────────────
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Expanded(child: Text('Transactions',
+                  style: Theme.of(context).textTheme.headlineLarge)),
               if (list.isNotEmpty)
                 Container(
-                  margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text('${list.length}',
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: primary)),
+                      style: GoogleFonts.inter(fontSize: 12,
+                          fontWeight: FontWeight.w700, color: primary)),
                 ),
-              AnimatedRotation(
-                turns: _headerExpanded ? 0 : 0.5,
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(Icons.keyboard_arrow_up_rounded,
-                    size: 22, color: AppColors.inkMuted),
+            ]),
+            const SizedBox(height: 10),
+
+            // ── Search + Filter icon (single line) ───────────────────────
+            Row(children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (v) => setState(() => _search = v),
+                    style: GoogleFonts.inter(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Search customer…',
+                      hintStyle: GoogleFonts.inter(color: AppColors.inkMuted, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.inkMuted),
+                      suffixIcon: _search.isNotEmpty
+                          ? GestureDetector(
+                              onTap: _clearSearch,
+                              child: const Icon(Icons.close_rounded, size: 16, color: AppColors.inkMuted))
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      filled: true,
+                      fillColor: isDark ? AppColors.surface2Dark : AppColors.surface2,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: isDark ? AppColors.separatorDark : AppColors.separator),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: isDark ? AppColors.separatorDark : AppColors.separator),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: primary, width: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Filter icon button with active badge
+              GestureDetector(
+                onTap: _openFilterSheet,
+                child: Stack(children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: activeFilterCount > 0
+                          ? primary.withValues(alpha: 0.12)
+                          : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: activeFilterCount > 0 ? primary
+                            : (isDark ? AppColors.separatorDark : AppColors.separator),
+                        width: activeFilterCount > 0 ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Icon(Icons.tune_rounded, size: 20,
+                        color: activeFilterCount > 0 ? primary : AppColors.inkMuted),
+                  ),
+                  if (activeFilterCount > 0)
+                    Positioned(
+                      right: 0, top: 0,
+                      child: Container(
+                        width: 16, height: 16,
+                        decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
+                        child: Center(
+                          child: Text('$activeFilterCount',
+                              style: GoogleFonts.inter(fontSize: 9,
+                                  fontWeight: FontWeight.w800, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                ]),
               ),
             ]),
-          ),
+            const SizedBox(height: 8),
+
+            // ── Active filter summary pill (only when non-default filters active) ──
+            if (hasDateFilter || hasCatFilter)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Icon(Icons.filter_list_rounded, size: 12, color: primary),
+                  const SizedBox(width: 5),
+                  Text(
+                    [
+                      if (hasDateFilter) dateLabel,
+                      if (hasCatFilter) _filter,
+                    ].join(' · '),
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: primary),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _resetAllFilters,
+                    child: Icon(Icons.close_rounded, size: 14, color: primary.withValues(alpha: 0.7)),
+                  ),
+                ]),
+              ),
+
+            // ── Summary strip (collapsible) ──────────────────────────────
+            if (list.isNotEmpty)
+              GestureDetector(
+                onTap: () => setState(() => _summaryExpanded = !_summaryExpanded),
+                behavior: HitTestBehavior.opaque,
+                child: Column(children: [
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    child: _summaryExpanded
+                        ? _SummaryStrip(list: list, custMap: custMap, searchName: _search)
+                        : const SizedBox.shrink(),
+                  ),
+                  // Collapse/expand handle
+                  Container(
+                    margin: EdgeInsets.only(top: _summaryExpanded ? 4 : 0),
+                    height: 18,
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Container(width: 32, height: 3,
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.separatorDark : AppColors.separator,
+                            borderRadius: BorderRadius.circular(2))),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: _summaryExpanded ? 0 : 0.5,
+                        duration: const Duration(milliseconds: 220),
+                        child: Icon(Icons.keyboard_arrow_up_rounded,
+                            size: 14, color: AppColors.inkMuted),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(width: 32, height: 3,
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.separatorDark : AppColors.separator,
+                            borderRadius: BorderRadius.circular(2))),
+                    ]),
+                  ),
+                ]),
+              ),
+            const SizedBox(height: 4),
+
+            // ── Divider ──────────────────────────────────────────────────
+            Divider(height: 1,
+                color: isDark ? AppColors.separatorDark : AppColors.separator),
+          ]),
         ),
 
-        // ── Collapsible panel ─────────────────────────────────────────────
-        AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          child: _headerExpanded
-              ? _HeaderPanel(
-                  search: _search,
-                  from: _from,
-                  to: _to,
-                  filter: _filter,
-                  isCustomRange: _isCustomRange,
-                  datePickerOpen: _datePickerOpen,
-                  isDark: isDark,
-                  primary: primary,
-                  onSearch: (v) => setState(() => _search = v),
-                  onTogglePicker: () => setState(() => _datePickerOpen = !_datePickerOpen),
-                  onFromPicked: (d) => setState(() {
-                    _from = d;
-                    if (_from.isAfter(_to)) _to = DateTime(_from.year, _from.month, _from.day, 23, 59, 59);
-                  }),
-                  onToPicked: (d) => setState(() {
-                    _to = DateTime(d.year, d.month, d.day, 23, 59, 59);
-                    if (_to.isBefore(_from)) _from = DateTime(_to.year, _to.month, _to.day);
-                  }),
-                  onResetToday: _isToday ? null : _resetToToday,
-                  onFilterChanged: (f) => setState(() => _filter = f),
-                  fmtDate: _fmtDate,
-                  fmtFull: _fmtFull,
-                  list: list,
-                )
-              : const SizedBox.shrink(),
-        ),
-
-        // Summary strip — here it has access to custMap and _search
-        if (list.isNotEmpty) _SummaryStrip(
-          list: list,
-          custMap: custMap,
-          searchName: _search,
-        ),
-
-        const SizedBox(height: 6),
-
-        // ── List ──────────────────────────────────────────────────────────
+        // ── Transaction list ──────────────────────────────────────────────
         Expanded(
           child: list.isEmpty
               ? RefreshIndicator(
@@ -215,30 +582,31 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                     child: SizedBox(
                       height: 400,
                       child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const SizedBox(height: 60, width: 60, child: CoolJarIcon()),
-                  const SizedBox(height: 16),
-                  Text('No transactions', style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 6),
-                  Text(
-                    all.isEmpty
-                      ? 'Tap + to record a delivery or return'
-                      : 'No transactions in this date range — try expanding the range',
-                    style: GoogleFonts.inter(color: AppColors.inkMuted),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (all.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text('${all.length} total in database',
-                        style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
-                  ],
-                ])),
+                        const SizedBox(height: 60, width: 60, child: CoolJarIcon()),
+                        const SizedBox(height: 16),
+                        Text('No transactions',
+                            style: Theme.of(context).textTheme.headlineSmall),
+                        const SizedBox(height: 6),
+                        Text(
+                          all.isEmpty
+                              ? 'Tap + to record a delivery or return'
+                              : 'No transactions in this date range — try expanding the range',
+                          style: GoogleFonts.inter(color: AppColors.inkMuted),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (all.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text('${all.length} total in database',
+                              style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
+                        ],
+                      ])),
                     ),
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: () => ref.read(transactionsProvider.notifier).refreshAll(ref),
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 100),
                     itemCount: list.length,
                     itemBuilder: (ctx, i) => _TxnCard(
                       tx: list[i],
@@ -302,13 +670,17 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
   }
 }
 
-// ── Collapsible header panel ──────────────────────────────────────────────────
+// ── (HeaderPanel removed — replaced by inline compact filter bar) ─────────────
+// ignore: unused_element
 class _HeaderPanel extends StatelessWidget {
   final String search, filter;
+  final TextEditingController searchCtrl;
   final DateTime from, to;
   final bool isCustomRange, datePickerOpen, isDark;
   final Color primary;
   final ValueChanged<String> onSearch, onFilterChanged;
+  final VoidCallback onClearSearch;
+  final VoidCallback onResetAllFilters;
   final VoidCallback onTogglePicker;
   final ValueChanged<DateTime> onFromPicked, onToPicked;
   final VoidCallback? onResetToday;
@@ -317,10 +689,13 @@ class _HeaderPanel extends StatelessWidget {
 
   const _HeaderPanel({
     required this.search, required this.filter,
+    required this.searchCtrl,
     required this.from, required this.to,
     required this.isCustomRange, required this.datePickerOpen,
     required this.isDark, required this.primary,
     required this.onSearch, required this.onFilterChanged,
+    required this.onClearSearch,
+    required this.onResetAllFilters,
     required this.onTogglePicker,
     required this.onFromPicked, required this.onToPicked,
     required this.onResetToday,
@@ -330,21 +705,32 @@ class _HeaderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSearch      = search.isNotEmpty;
+    final hasTypeFilter  = filter != 'All';
+    final hasDateFilter  = isCustomRange;
+    final hasAnyFilter   = hasSearch || hasTypeFilter || hasDateFilter;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Search
+        // ── Search with clear button ──────────────────────────────────────
         Container(
           height: 44,
           decoration: BoxDecoration(
             color: isDark ? AppColors.surface2Dark : AppColors.surface2,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+            border: Border.all(
+              color: hasSearch
+                  ? primary.withValues(alpha: 0.5)
+                  : (isDark ? AppColors.separatorDark : AppColors.separator),
+              width: hasSearch ? 1.5 : 1,
+            ),
           ),
           child: Row(children: [
             const Padding(padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(Icons.search_rounded, color: AppColors.inkMuted, size: 18)),
             Expanded(child: TextField(
+              controller: searchCtrl,
               onChanged: onSearch,
               decoration: InputDecoration(
                 hintText: 'Search customer...',
@@ -352,8 +738,77 @@ class _HeaderPanel extends StatelessWidget {
                 hintStyle: GoogleFonts.inter(color: AppColors.inkMuted),
               ),
             )),
+            // Clear button — visible only when search is active
+            if (hasSearch)
+              GestureDetector(
+                onTap: onClearSearch,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text('Clear',
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700,
+                          color: primary)),
+                ),
+              ),
           ]),
         ),
+
+        // ── Active filter strip — dismissible chips, always visible when active ──
+        if (hasAnyFilter) ...[
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              // Search chip
+              if (hasSearch)
+                _ActiveFilterChip(
+                  label: '"$search"',
+                  icon: Icons.search_rounded,
+                  primary: primary,
+                  onRemove: onClearSearch,
+                ),
+              // Type filter chip
+              if (hasTypeFilter) ...[
+                if (hasSearch) const SizedBox(width: 6),
+                _ActiveFilterChip(
+                  label: filter,
+                  icon: filter == 'Event'
+                      ? Icons.celebration_rounded
+                      : Icons.local_shipping_rounded,
+                  primary: primary,
+                  onRemove: () => onFilterChanged('All'),
+                ),
+              ],
+              // Custom date chip
+              if (hasDateFilter) ...[
+                if (hasSearch || hasTypeFilter) const SizedBox(width: 6),
+                _ActiveFilterChip(
+                  label: '${fmtDate(from)} – ${fmtDate(to)}',
+                  icon: Icons.calendar_today_rounded,
+                  primary: primary,
+                  onRemove: onResetToday ?? () {},
+                ),
+              ],
+              // Reset all — only when more than one filter is active
+              if ([hasSearch, hasTypeFilter, hasDateFilter].where((x) => x).length > 1) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onResetAllFilters,
+                  child: Text('Reset all',
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
+                          color: AppColors.inkMuted,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.inkMuted)),
+                ),
+              ],
+            ]),
+          ),
+        ],
+
         const SizedBox(height: 8),
         // ── Date range pill + inline expandable picker ────────────────────
         Row(children: [
@@ -454,18 +909,20 @@ class _HeaderPanel extends StatelessWidget {
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(children: [
-                          _QuickPick(label: 'Today',        onTap: onResetToday ?? () {}),
-                          _QuickPick(label: 'Yesterday',    onTap: () {
+                          // Only show 'Today' chip when not already on today
+                          if (isCustomRange)
+                            _QuickPick(label: 'Today', onTap: onResetToday ?? () {}),
+                          _QuickPick(label: 'Yesterday', onTap: () {
                             final y = DateTime.now().subtract(const Duration(days: 1));
                             onFromPicked(DateTime(y.year, y.month, y.day));
                             onToPicked(DateTime(y.year, y.month, y.day));
                           }),
-                          _QuickPick(label: 'Last 7 days',  onTap: () {
+                          _QuickPick(label: 'Last 7 days', onTap: () {
                             final n = DateTime.now();
                             onFromPicked(DateTime(n.year, n.month, n.day).subtract(const Duration(days: 6)));
                             onToPicked(n);
                           }),
-                          _QuickPick(label: 'This month',   onTap: () {
+                          _QuickPick(label: 'This month', onTap: () {
                             final n = DateTime.now();
                             onFromPicked(DateTime(n.year, n.month, 1));
                             onToPicked(n);
@@ -483,7 +940,7 @@ class _HeaderPanel extends StatelessWidget {
               : const SizedBox.shrink(),
         ),
         const SizedBox(height: 8),
-        // Filter chips — All | Daily | Event  (Unpaid removed)
+        // Filter chips — All | Daily | Event
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -528,6 +985,43 @@ class _HeaderPanel extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const SizedBox(height: 4),
+      ]),
+    );
+  }
+}
+
+
+// ── (ActiveFilterChip removed — no longer used) ──────────────────────────────
+// ignore: unused_element
+class _ActiveFilterChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color primary;
+  final VoidCallback onRemove;
+  const _ActiveFilterChip({
+    required this.label, required this.icon,
+    required this.primary, required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: primary.withValues(alpha: 0.30)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 10, color: primary),
+        const SizedBox(width: 4),
+        Text(label,
+            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: primary)),
+        const SizedBox(width: 5),
+        GestureDetector(
+          onTap: onRemove,
+          child: Icon(Icons.close_rounded, size: 12, color: primary.withValues(alpha: 0.7)),
+        ),
       ]),
     );
   }
@@ -591,7 +1085,8 @@ class _InlineDateField extends StatelessWidget {
   }
 }
 
-// ── Quick-pick shortcut chip ─────────────────────────────────────────────────
+// ── (QuickPick removed — presets now handled inline) ─────────────────────────
+// ignore: unused_element
 class _QuickPick extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -1154,6 +1649,7 @@ class _TxnFormState extends ConsumerState<TxnForm> {
       _eventNameCtrl.text = e.eventName ?? '';
       if ((e.transportFee) > 0) _transportCtrl.text = e.transportFee.toInt().toString();
       _eventStatus = e.eventStatus ?? _autoEventStatus(e.date);
+      try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
     } else {
       if (widget.initialDeliveryType != null) {
         _deliveryType = widget.initialDeliveryType!;
@@ -1181,6 +1677,7 @@ class _TxnFormState extends ConsumerState<TxnForm> {
   final _petOverrideCtrl = TextEditingController();
   // ── event status ──────────────────────────────────────────────────────────
   String _eventStatus = 'scheduled'; // scheduled | active | completed
+  DateTime _txDate = DateTime.now();
 
   @override
   void dispose() {
@@ -1248,11 +1745,11 @@ class _TxnFormState extends ConsumerState<TxnForm> {
     }
 
     final tx = JarTransaction(
-      id: widget.existing?.id ?? _uuid.v4(),
-      customerId: _cust!.id, customerName: _cust!.name,
-      date: widget.existing?.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      coolDelivered: _cd, petDelivered: _pd, coolReturned: _cr, petReturned: _pr,
-      coolDamaged: _cdmg, petDamaged: _pdmg,
+        id: widget.existing?.id ?? _uuid.v4(),
+        customerId: _cust!.id, customerName: _cust!.name,
+        date: DateFormat('yyyy-MM-dd').format(_txDate),
+        coolDelivered: _cd, petDelivered: _pd, coolReturned: _cr, petReturned: _pr,
+        coolDamaged: _cdmg, petDamaged: _pdmg,
       coolPrice: _effectiveCoolPrice,
       petPrice: _effectivePetPrice,
       billedAmount: _billed, amountCollected: _collected, paymentMode: _mode,
@@ -1293,6 +1790,40 @@ class _TxnFormState extends ConsumerState<TxnForm> {
       key: _formKey,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
+        // ── Date Selector ─────────────────────────────────────────────────────
+        Center(
+          child: GestureDetector(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _txDate,
+                firstDate: DateTime(DateTime.now().year - 2),
+                lastDate: DateTime.now().add(const Duration(days: 365)), // allow scheduling ahead for events
+              );
+              if (picked != null) setState(() => _txDate = picked);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('d MMM yyyy').format(_txDate),
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+              ]),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
         // ── Delivery Type Toggle — hidden when type pre-set from quick action ──
         if (widget.initialDeliveryType == null) ...[
           _DeliveryTypeToggle(
@@ -1306,11 +1837,11 @@ class _TxnFormState extends ConsumerState<TxnForm> {
         // ── Event Details (only for events) ──────────────────────────────────
         if (isEvent) ...[
           _EventDetailsSection(
-            nameCtrl: _eventNameCtrl,
-            transportCtrl: _transportCtrl,
-            eventDate: _eventDate,
+              nameCtrl: _eventNameCtrl,
+              transportCtrl: _transportCtrl,
+              eventDate: _txDate,
             isDark: isDark,
-            onDatePicked: (d) => setState(() => _eventDate = d),
+            onDatePicked: (d) => setState(() => _txDate = d ?? _txDate),
             onTransportChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 20),
@@ -1592,6 +2123,7 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
   String _mode = 'cash';
   bool _showPriceOverride = false;
   bool _saving = false;
+  DateTime _txDate = DateTime.now();
   final _noteCtrl         = TextEditingController();
   final _amtCtrl          = TextEditingController();
   final _coolOverrideCtrl = TextEditingController();
@@ -1609,6 +2141,7 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
       _amtCtrl.text = e.amountCollected.toInt().toString();
       _mode = e.paymentMode;
       _noteCtrl.text = e.note;
+      try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
     } else {
       final pre = ref.read(selectedCustomerForTxnProvider);
       if (pre != null) {
@@ -1671,7 +2204,7 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
     final tx = JarTransaction(
       id: widget.existing?.id ?? _uuid.v4(),
       customerId: _cust!.id, customerName: _cust!.name,
-      date: widget.existing?.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      date: DateFormat('yyyy-MM-dd').format(_txDate),
       coolDelivered: _cd, petDelivered: _pd,
       coolReturned: _cr, petReturned: _pr,
       coolDamaged: _cdmg, petDamaged: _pdmg,
@@ -1703,6 +2236,40 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── Date Selector ─────────────────────────────────────────────────────
+      Center(
+        child: GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _txDate,
+              firstDate: DateTime(DateTime.now().year - 2),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) setState(() => _txDate = picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('d MMM yyyy').format(_txDate),
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+            ]),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
+
       // ── Voice fill button ──────────────────────────────────────────────────
       if (widget.existing == null)
         Padding(
@@ -1844,7 +2411,7 @@ class _EventFormState extends ConsumerState<EventForm> {
   String _eventStatus = 'scheduled';
   bool _showPriceOverride = false;
   bool _saving = false;
-  DateTime? _eventDate;
+  DateTime _txDate = DateTime.now();
   final _noteCtrl         = TextEditingController();
   final _amtCtrl          = TextEditingController();
   final _eventNameCtrl    = TextEditingController();
@@ -1866,6 +2433,7 @@ class _EventFormState extends ConsumerState<EventForm> {
       _eventNameCtrl.text = e.eventName ?? '';
       if (e.transportFee > 0) _transportCtrl.text = e.transportFee.toInt().toString();
       _eventStatus = e.eventStatus ?? _autoStatus(e.date);
+      try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
     } else {
       final pre = ref.read(selectedCustomerForTxnProvider);
       if (pre != null) {
@@ -1928,7 +2496,7 @@ class _EventFormState extends ConsumerState<EventForm> {
     final tx = JarTransaction(
       id: widget.existing?.id ?? _uuid.v4(),
       customerId: _cust!.id, customerName: _cust!.name,
-      date: widget.existing?.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      date: DateFormat('yyyy-MM-dd').format(_txDate),
       coolDelivered: _cd, petDelivered: _pd,
       coolReturned: _cr, petReturned: _pr,
       coolDamaged: _cdmg, petDamaged: _pdmg,
@@ -1961,6 +2529,40 @@ class _EventFormState extends ConsumerState<EventForm> {
         begin: Alignment.centerLeft, end: Alignment.centerRight);
 
     return Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── Date Selector ─────────────────────────────────────────────────────
+      Center(
+        child: GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _txDate,
+              firstDate: DateTime(DateTime.now().year - 2),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+            );
+            if (picked != null) setState(() => _txDate = picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('d MMM yyyy').format(_txDate),
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+            ]),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
+
       // ── Voice fill button ──────────────────────────────────────────────────
       if (widget.existing == null)
         Padding(
@@ -1984,9 +2586,10 @@ class _EventFormState extends ConsumerState<EventForm> {
                 style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
           ]),
         ),
+
       _EventDetailsSection(nameCtrl: _eventNameCtrl, transportCtrl: _transportCtrl,
-        eventDate: _eventDate, isDark: isDark,
-        onDatePicked: (d) => setState(() => _eventDate = d),
+        eventDate: _txDate, isDark: isDark,
+        onDatePicked: (d) => setState(() => _txDate = d ?? _txDate),
         onTransportChanged: (_) => setState(() {})),
       const SizedBox(height: 20),
 
@@ -2039,7 +2642,7 @@ class _EventFormState extends ConsumerState<EventForm> {
       const SizedBox(height: 16),
 
       _EventStatusSection(
-        status: _eventStatus, eventDate: _eventDate,
+        status: _eventStatus, eventDate: _txDate,
         coolDelivered: _cd, petDelivered: _pd,
         coolReturned: _cr, petReturned: _pr,
         coolReturnDmg: _cdmg, petReturnDmg: _pdmg, isDark: isDark,
@@ -2113,6 +2716,8 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
   String _returnContext = 'daily';
   final _noteCtrl = TextEditingController();
 
+  DateTime _txDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -2122,6 +2727,7 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
       _cdmg = e.coolDamaged; _pdmg = e.petDamaged;
       _noteCtrl.text  = e.note;
       _returnContext  = e.deliveryType == 'event' ? 'event' : 'daily';
+      try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
     } else {
       final pre = ref.read(selectedCustomerForTxnProvider);
       if (pre != null) {
@@ -2156,7 +2762,7 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
     final tx = JarTransaction(
       id: widget.existing?.id ?? _uuid.v4(),
       customerId: _cust!.id, customerName: _cust!.name,
-      date: widget.existing?.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      date: DateFormat('yyyy-MM-dd').format(_txDate),
       coolDelivered: 0, petDelivered: 0,
       coolReturned: _cr, petReturned: _pr,
       coolDamaged: _cdmg, petDamaged: _pdmg,
@@ -2189,6 +2795,40 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+      // ── Date Selector ─────────────────────────────────────────────────────
+      Center(
+        child: GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _txDate,
+              firstDate: DateTime(DateTime.now().year - 2),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) setState(() => _txDate = picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('d MMM yyyy').format(_txDate),
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+            ]),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
 
       // ── Voice fill button ──────────────────────────────────────────────────
       if (widget.existing == null)
@@ -2396,6 +3036,7 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
   bool   _saving  = false;
   final _amtCtrl  = TextEditingController();
   final _noteCtrl = TextEditingController();
+  DateTime _txDate = DateTime.now();
 
   @override
   void initState() {
@@ -2404,6 +3045,7 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
     if (e != null) {
       _amtCtrl.text  = e.amountCollected.toInt().toString();
       _noteCtrl.text = e.note;
+      try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
       // Detect original pay type from saved fields
       if (e.paymentMode == 'advance') {
         _payType = 'advance';
@@ -2454,7 +3096,7 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
     final tx = JarTransaction(
       id: widget.existing?.id ?? _uuid.v4(),
       customerId: _cust!.id, customerName: _cust!.name,
-      date: widget.existing?.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      date: DateFormat('yyyy-MM-dd').format(_txDate),
       coolDelivered: 0, petDelivered: 0, coolReturned: 0, petReturned: 0,
       coolDamaged: 0, petDamaged: 0, coolPrice: 0, petPrice: 0,
       billedAmount: 0, amountCollected: val, paymentMode: payModeOut,
@@ -2482,6 +3124,40 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
     final isAdvance = _payType == 'advance';
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+      // ── Date Selector ─────────────────────────────────────────────────────
+      Center(
+        child: GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _txDate,
+              firstDate: DateTime(DateTime.now().year - 2),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) setState(() => _txDate = picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                DateFormat('d MMM yyyy').format(_txDate),
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+            ]),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
 
       // ── Voice fill button ──────────────────────────────────────────────────
       if (widget.existing == null)

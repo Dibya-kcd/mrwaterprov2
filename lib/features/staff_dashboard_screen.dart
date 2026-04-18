@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
-import '../core/models/user_role.dart';
 import '../core/theme/app_colors.dart';
 
 class StaffDashboardScreen extends ConsumerWidget {

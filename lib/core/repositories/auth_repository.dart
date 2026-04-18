@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/user_role.dart';
 import '../providers/app_state.dart';
 import '../services/rtdb_user_datasource.dart';
 import '../utils/pin_hash_util.dart';

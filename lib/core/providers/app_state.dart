@@ -958,17 +958,36 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
   }
 
   // ── Public API (called by TransactionsNotifier) ──────────────────────────
+
+  /// Returns true if a transaction has any jar movement at all.
+  /// Pure payment transactions (collect money only, no jar changes) return false
+  /// and should be skipped to keep the inventoryMovements log clean.
+  static bool _hasJarMovement(JarTransaction tx) =>
+      tx.coolDelivered > 0 || tx.petDelivered > 0 ||
+      tx.coolReturned  > 0 || tx.petReturned  > 0 ||
+      tx.coolDamaged   > 0 || tx.petDamaged   > 0;
+
   void apply(JarTransaction tx, {String? revId}) {
+    // Guard: pure payment transactions have no jar movement — skip stock update
+    // and movement log entry entirely to avoid polluting inventoryMovements with
+    // 0-delta records and unnecessary Firebase writes.
+    if (!_hasJarMovement(tx)) return;
     _apply(tx);
     _writeMovement(InventoryMovement.fromApply(tx, revId: revId));
   }
 
   void revert(JarTransaction tx) {
+    // Guard: same — reverting a pure payment has nothing to undo in inventory.
+    if (!_hasJarMovement(tx)) return;
     _revert(tx);
     _writeMovement(InventoryMovement.fromRevert(tx));
   }
 
   void edit(JarTransaction old, JarTransaction neu, {String? revId}) {
+    // Guard: only touch inventory if at least one side has jar movement.
+    // If both old and new are pure payments, skip entirely.
+    // If only one side changed (e.g. payment turned into delivery), run the full delta.
+    if (!_hasJarMovement(old) && !_hasJarMovement(neu)) return;
     _revert(old);
     _apply(neu);
     _writeMovement(InventoryMovement.fromEditDelta(old, neu, revId: revId));
@@ -1001,6 +1020,14 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
       coolTotalDelta: -cool, petTotalDelta: -pet,
       createdAt: _now(), note: 'Loss/damage write-off: $cool cool, $pet PET',
     ));
+  }
+
+  void syncStock(int totalCoolOut, int totalPetOut) {
+    state = state.copyWith(
+      coolStock: (state.coolTotal - totalCoolOut).clamp(0, state.coolTotal),
+      petStock:  (state.petTotal  - totalPetOut ).clamp(0, state.petTotal),
+    );
+    _save();
   }
 
   /// Force a fresh read of inventory from Firebase.
@@ -1078,6 +1105,14 @@ class CustomersNotifier extends StateNotifier<List<Customer>> {
     ];
     // Async Firebase write — listener will fire and re-set state (idempotent).
     await FirebaseService.instance.update('${FirebaseConfig.nodeCustomers}/${c.id}', c.toJson());
+  }
+
+  Future<void> remove(String id) async {
+    _assertAuth();
+    // Optimistic local removal
+    state = state.where((x) => x.id != id).toList();
+    // Async Firebase removal
+    await FirebaseService.instance.removeChild(FirebaseConfig.nodeCustomers, id);
   }
 
   /// Apply a NEW transaction to a customer's jar counts and balance.

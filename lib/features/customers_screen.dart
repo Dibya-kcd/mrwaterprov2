@@ -897,6 +897,40 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
             )),
           ),
         ),
+        const SizedBox(height: 12),
+
+        // Delete (Permanently remove)
+        if (widget.customer.coolOut == 0 && widget.customer.petOut == 0 && widget.customer.balance == 0)
+          GestureDetector(
+            onTap: () async {
+              final navigator = Navigator.of(context);
+              final overlay = Overlay.of(context);
+              final ok = await confirmDialog(context,
+                title: 'Delete Customer Permanently?',
+                message: 'This will permanently remove ${widget.customer.name} and all their records. This action cannot be undone.',
+                confirmLabel: 'Delete Permanently',
+                color: AppColors.dangerColor(isDark),
+              );
+              if (ok && mounted) {
+                ref.read(customersProvider.notifier).remove(widget.customer.id);
+                navigator.pop(); // Close edit sheet
+                navigator.pop(); // Close detail sheet
+                showToast(overlay.context, '🗑️ Customer deleted permanently', success: true);
+              }
+            },
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.dangerColor(isDark).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(child: Text(
+                'Delete Customer Permanently',
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700,
+                    color: AppColors.dangerColor(isDark)),
+              )),
+            ),
+          ),
       ]),
     );
   }
