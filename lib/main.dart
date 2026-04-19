@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════════════
-// main.dart
+// main.dart  — FIX v2: warm-resume session check + Firebase offline persistence
 // ════════════════════════════════════════════════════════════════════════════
 
 import 'dart:async';
@@ -20,7 +20,6 @@ import 'core/services/firebase_config.dart';
 import 'core/services/session_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'features/admin_panel_screen.dart';
-// FIX: import the actual modern screen files (not the non-existent aliases)
 import 'features/modern_company_login_screen.dart';
 import 'features/main_scaffold.dart';
 import 'features/modern_pin_lock_screen.dart';
@@ -30,28 +29,34 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   debugPrint('--- DEPLOYMENT DEBUG ---');
-  debugPrint('Build Date: 2026-03-24 12:00 (Manual Check)');
-  
+  debugPrint('Build Date: 2026-04-18 (FIX v2)');
+
   try {
     debugPrint('Firebase: Initializing for ${FirebaseConfig.projectId}...');
     if (FirebaseConfig.isConfigured) {
       debugPrint('Firebase: Config looks OK (API Key found)');
       debugPrint('Firebase: Database URL = [${FirebaseConfig.databaseUrl}]');
-      
+
       final key = FirebaseConfig.apiKey;
       final appId = FirebaseConfig.appId;
-      final maskedKey = key.length > 8 ? '${key.substring(0, 4)}...${key.substring(key.length - 4)}' : 'INVALID';
-      final maskedAppId = appId.length > 8 ? '${appId.substring(0, 4)}...${appId.substring(appId.length - 4)}' : 'INVALID';
-      
+      final maskedKey = key.length > 8
+          ? '${key.substring(0, 4)}...${key.substring(key.length - 4)}'
+          : 'INVALID';
+      final maskedAppId = appId.length > 8
+          ? '${appId.substring(0, 4)}...${appId.substring(appId.length - 4)}'
+          : 'INVALID';
+
       debugPrint('Firebase: Masked API Key = $maskedKey');
       debugPrint('Firebase: Masked App ID  = $maskedAppId');
       debugPrint('Firebase: Auth Domain    = ${FirebaseConfig.authDomain}');
-      
+
       if (FirebaseConfig.appId.length < 30) {
-        debugPrint('Firebase: ⚠️ WARNING: App ID seems too short! Please verify it in GitHub Secrets.');
+        debugPrint(
+            'Firebase: ⚠️ WARNING: App ID seems too short! Please verify it in GitHub Secrets.');
       }
     } else {
-      debugPrint('Firebase: ⚠️ WARNING: Missing API Key or Project ID in build config!');
+      debugPrint(
+          'Firebase: ⚠️ WARNING: Missing API Key or Project ID in build config!');
     }
 
     try {
@@ -59,10 +64,12 @@ void main() async {
         debugPrint('Firebase: Initializing with dart-define options');
         await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
       } else if (!kIsWeb) {
-        debugPrint('Firebase: No dart-define config found; attempting native platform initialization');
+        debugPrint(
+            'Firebase: No dart-define config found; attempting native platform initialization');
         await Firebase.initializeApp();
       } else {
-        debugPrint('Firebase: Missing web configuration and no native fallback available');
+        debugPrint(
+            'Firebase: Missing web configuration and no native fallback available');
         throw StateError('Firebase web configuration is missing');
       }
       debugPrint('Firebase: App initialized successfully');
@@ -74,6 +81,16 @@ void main() async {
     FirebaseDatabase.instanceFor(
         app: Firebase.app(), databaseURL: FirebaseConfig.databaseUrl);
     debugPrint('Firebase: Database connection prepared');
+
+    // FIX: Enable offline persistence so delivery staff can work without internet.
+    // RTDB queues writes and serves reads from cache when offline.
+    // Mobile only — web persistence has different API and is opt-in separately.
+    if (!kIsWeb) {
+      FirebaseDatabase.instance.setPersistenceEnabled(true);
+      // 10 MB cache — enough to hold customers + transactions for a typical day
+      FirebaseDatabase.instance.setPersistenceCacheSizeBytes(10 * 1024 * 1024);
+      debugPrint('Firebase: Offline persistence ENABLED (10 MB cache)');
+    }
   } catch (e) {
     debugPrint('Firebase init error: $e');
   }
@@ -96,13 +113,13 @@ class MrWaterApp extends ConsumerWidget {
   const MrWaterApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings  = ref.watch(settingsProvider);
+    final settings = ref.watch(settingsProvider);
     final themeMode = ref.watch(themeModeProvider);
     return ActivityDetector(
       child: MaterialApp(
         title: settings.appName,
         debugShowCheckedModeBanner: false,
-        theme:     AppTheme.light(settings.accentColor),
+        theme: AppTheme.light(settings.accentColor),
         darkTheme: AppTheme.dark(settings.accentColor),
         themeMode: themeMode,
         home: const _AppGate(),
@@ -118,11 +135,11 @@ class ActivityDetector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Listener(
-    behavior: HitTestBehavior.translucent,
-    onPointerDown: (_) => SessionManager.instance.recordActivity(),
-    onPointerMove: (_) => SessionManager.instance.recordActivity(),
-    child: child,
-  );
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => SessionManager.instance.recordActivity(),
+        onPointerMove: (_) => SessionManager.instance.recordActivity(),
+        child: child,
+      );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -139,6 +156,11 @@ class _AppGate extends ConsumerStatefulWidget {
 class _AppGateState extends ConsumerState<_AppGate> {
   _Screen _screen = _Screen.splash;
 
+  // FIX: flag set when the lock was triggered by inactivity (not explicit sign-out).
+  // Kept for future use when ModernPinLockScreen adds a lockedDueToInactivity param.
+  // ignore: unused_field
+  bool _lockedDueToInactivity = false;
+
   @override
   void initState() {
     super.initState();
@@ -148,8 +170,7 @@ class _AppGateState extends ConsumerState<_AppGate> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    precacheImage(
-        const AssetImage('assets/images/mrwater_logo.png'), context);
+    precacheImage(const AssetImage('assets/images/mrwater_logo.png'), context);
   }
 
   final Completer<void> _splashCompleter = Completer<void>();
@@ -169,13 +190,31 @@ class _AppGateState extends ConsumerState<_AppGate> {
 
     final results = await Future.wait([
       authFuture,
-      Future.any([_splashCompleter.future, Future.delayed(const Duration(seconds: 4))]),
+      Future.any([
+        _splashCompleter.future,
+        Future.delayed(const Duration(seconds: 4))
+      ]),
       minSplash,
     ]);
 
     if (!mounted) return;
     final user = results[0] as User?;
     debugPrint('Startup complete — user: ${user?.email ?? "none"}');
+
+    // FIX: Check if a recent session is still valid before forcing PIN screen.
+    // This prevents re-showing the PIN on every warm resume within 5 minutes.
+    if (user != null) {
+      final sessionValid = await SessionManager.instance.isSessionStillValid();
+      if (sessionValid && mounted) {
+        debugPrint('[AppGate] Warm resume — session still valid, skipping PIN');
+        _initOwnerSession(user);
+        ref.read(pinUnlockedProvider.notifier).state = true;
+        SessionManager.instance.startWatching(ref);
+        _goto(_Screen.app);
+        return;
+      }
+    }
+
     _goto(_Screen.pin);
   }
 
@@ -192,8 +231,11 @@ class _AppGateState extends ConsumerState<_AppGate> {
       ref.read(sessionUserProvider.notifier).state = null;
     }
     ref.read(pinUnlockedProvider.notifier).state = true;
-    SessionManager.instance.startWatching(ref);
+    // FIX: persist unlock timestamp so warm-resume skips PIN within 5 minutes
     SessionManager.instance.persistUnlocked();
+    SessionManager.instance.startWatching(ref);
+    // Clear inactivity flag on successful unlock
+    setState(() => _lockedDueToInactivity = false);
     _goto(_Screen.app);
   }
 
@@ -211,24 +253,22 @@ class _AppGateState extends ConsumerState<_AppGate> {
       CompanySession.init(user.uid,
           name: user.displayName ?? user.email ?? '');
     }
-    // FIX: ensure staff provider is watching the correct company ID node
     ref.read(staffProvider.notifier).reinit();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
-      // FIX: check if owner record already exists before adding/resetting it
       final existing = await RTDBUserDataSource.instance
           .getUser(CompanySession.companyId, user.uid);
 
       if (existing == null) {
         ref.read(staffProvider.notifier).add(StaffMember(
-          id:          user.uid,
-          name:        user.displayName ?? 'Owner',
-          phone:       user.phoneNumber ?? '',
-          pin:         '0000',
-          isActive:    true,
-          role:        UserRole.owner, // FIX: explicitly set as owner
+          id: user.uid,
+          name: user.displayName ?? 'Owner',
+          phone: user.phoneNumber ?? '',
+          pin: '',
+          isActive: true,
+          role: UserRole.owner,
           permissions: const [
             'dashboard', 'transactions', 'customers', 'inventory',
             'load_unload', 'payments', 'reports', 'notifications',
@@ -239,19 +279,24 @@ class _AppGateState extends ConsumerState<_AppGate> {
     });
   }
 
+  // Called by SessionManager inactivity watchdog — sets inactivity flag first.
+  // ignore: unused_element
+  void _lockDueToInactivity() {
+    setState(() => _lockedDueToInactivity = true);
+    SessionManager.instance.lock(ref);
+    _goto(_Screen.pin);
+  }
+
   @override
   Widget build(BuildContext context) {
     final pinUnlocked = ref.watch(pinUnlockedProvider);
-    
-    // Determine which screen to show based on state
-    final effectiveScreen = (!pinUnlocked && _screen == _Screen.app) 
-        ? _Screen.pin 
-        : _screen;
+
+    final effectiveScreen =
+        (!pinUnlocked && _screen == _Screen.app) ? _Screen.pin : _screen;
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300), // Add a small transition
+      duration: const Duration(milliseconds: 300),
       child: switch (effectiveScreen) {
-
         _Screen.splash => ModernSplashScreen(
             key: const ValueKey('splash'),
             nextScreen: const SizedBox.shrink(),
@@ -259,22 +304,19 @@ class _AppGateState extends ConsumerState<_AppGate> {
           ),
         _Screen.pin => ModernPinLockScreen(
             key: const ValueKey('pin'),
-            onUnlocked:        _onPinUnlocked,
+            onUnlocked: _onPinUnlocked,
             onOpenAdminPortal: _onOpenAdminPortal,
           ),
-
         _Screen.adminPortal => ModernCompanyLoginScreen(
             key: const ValueKey('admin'),
             onAuthenticated: _onAdminAuthenticated,
             onBack: () => _goto(_Screen.pin),
           ),
-
         _Screen.adminPanel => AdminPanelScreen(
             key: const ValueKey('admin_panel'),
             onBack: () => _goto(_Screen.app),
             onSignOut: () => _goto(_Screen.pin),
           ),
-
         _Screen.app => const MainScaffold(
             key: ValueKey('app'),
           ),

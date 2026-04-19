@@ -1,12 +1,22 @@
+// ════════════════════════════════════════════════════════════════════════════
+// auth_repository.dart
+// FIX v2: companyId is now read lazily via a getter closure.
+// ════════════════════════════════════════════════════════════════════════════
+
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/app_state.dart';
 import '../services/rtdb_user_datasource.dart';
 import '../utils/pin_hash_util.dart';
 
 class AuthRepository {
-  AuthRepository({required this.companyId});
+  /// FIX: accept a getter so companyId is always the live value, not whatever
+  /// was in CompanySession at the moment the provider was first constructed.
+  AuthRepository({required String Function() companyIdGetter})
+      : _companyIdGetter = companyIdGetter;
 
-  final String companyId;
+  final String Function() _companyIdGetter;
+  String get companyId => _companyIdGetter();
+
   final _datasource = RTDBUserDataSource.instance;
 
   Future<StaffMember> ensureOwnerRecord(User user) async {
@@ -21,7 +31,7 @@ class AuthRepository {
       phone: user.phoneNumber ?? '',
       pin: '',
       isActive: true,
-      permissions: [
+      permissions: const [
         'dashboard', 'transactions', 'customers', 'inventory',
         'load_unload', 'payments', 'reports', 'notifications',
         'settings', 'expenses', 'smart_entry',

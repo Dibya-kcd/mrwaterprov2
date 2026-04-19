@@ -20,6 +20,9 @@ class _NodeResult {
   final String node;
   final String label;
   final String emoji;
+  // Payload written during the WRITE test — must satisfy the node's .validate rule.
+  // Each node has different required fields; a generic {diag,ts,node} fails them all.
+  final Map<String, dynamic> scratchPayload;
   _Status readStatus  = _Status.idle;
   _Status writeStatus = _Status.idle;
   int? readMs;
@@ -29,7 +32,10 @@ class _NodeResult {
   String? writeError;
 
   _NodeResult({
-    required this.node, required this.label, required this.emoji,
+    required this.node,
+    required this.label,
+    required this.emoji,
+    required this.scratchPayload,
   });
 
   bool get allOk   => readStatus == _Status.ok  && writeStatus == _Status.ok;
@@ -38,22 +44,89 @@ class _NodeResult {
 }
 
 // ── All nodes to test ─────────────────────────────────────────────────────────
-List<_NodeResult> _buildNodes() => [
-  _NodeResult(node: FirebaseConfig.nodeSettings,            label: 'Settings',               emoji: '⚙️'),
-  _NodeResult(node: FirebaseConfig.nodeCustomers,           label: 'Customers',              emoji: '👥'),
-  _NodeResult(node: FirebaseConfig.nodeTransactions,        label: 'Transactions',           emoji: '📦'),
-  _NodeResult(node: FirebaseConfig.nodeLedgerEntries,       label: 'Ledger Entries',         emoji: '📒'),
-  _NodeResult(node: FirebaseConfig.nodeInventory,           label: 'Inventory',              emoji: '🏭'),
-  _NodeResult(node: FirebaseConfig.nodePayments,            label: 'Payments',               emoji: '💳'),
-  _NodeResult(node: FirebaseConfig.nodeRevisions,           label: 'TX Revisions',           emoji: '🔁'),
-  _NodeResult(node: FirebaseConfig.nodeInventoryMovements,  label: 'Inventory Movements',    emoji: '📊'),
-  _NodeResult(node: FirebaseConfig.nodeLoadUnload,          label: 'Load / Unload Trips',    emoji: '🚛'),
-  _NodeResult(node: FirebaseConfig.nodeExpenses,            label: 'Expenses',               emoji: '🧾'),
-  _NodeResult(node: FirebaseConfig.nodeStaff,               label: 'Staff',                  emoji: '👷'),
-  _NodeResult(node: FirebaseConfig.nodeAuditLog,            label: 'Audit Log',              emoji: '🕵️'),
-  _NodeResult(node: FirebaseConfig.nodeAreas,               label: 'Areas',                  emoji: '📍'),
-  _NodeResult(node: FirebaseConfig.nodeVehicles,            label: 'Vehicles',               emoji: '🚗'),
-];
+// Each scratchPayload satisfies the node's Firebase .validate rule so the
+// diagnostic WRITE test passes without relaxing security rules.
+List<_NodeResult> _buildNodes() {
+  const ts = '__diag__';
+  return [
+    // settings: validate requires appName + businessName (written at node root, not child)
+    _NodeResult(
+      node: FirebaseConfig.nodeSettings, label: 'Settings', emoji: '⚙️',
+      scratchPayload: {'appName': '__diag__', 'businessName': '__diag__'},
+    ),
+    // customers/$id: requires id, name, phone, createdAt
+    _NodeResult(
+      node: FirebaseConfig.nodeCustomers, label: 'Customers', emoji: '👥',
+      scratchPayload: {'id': ts, 'name': ts, 'phone': ts, 'createdAt': ts},
+    ),
+    // transactions/$txId: requires id, customerId, customerName, date, createdAt, billedAmount
+    _NodeResult(
+      node: FirebaseConfig.nodeTransactions, label: 'Transactions', emoji: '📦',
+      scratchPayload: {'id': ts, 'customerId': ts, 'customerName': ts,
+        'date': ts, 'createdAt': ts, 'billedAmount': 0},
+    ),
+    // ledgerEntries/$id: requires id, customerId, txId, date, type, debit, credit, balance
+    _NodeResult(
+      node: FirebaseConfig.nodeLedgerEntries, label: 'Ledger Entries', emoji: '📒',
+      scratchPayload: {'id': ts, 'customerId': ts, 'txId': ts,
+        'date': ts, 'type': ts, 'debit': 0, 'credit': 0, 'balance': 0},
+    ),
+    // inventory: validate requires coolTotal, coolStock, petTotal, petStock (root node, not child)
+    _NodeResult(
+      node: FirebaseConfig.nodeInventory, label: 'Inventory', emoji: '🏭',
+      scratchPayload: {'coolTotal': 0, 'coolStock': 0, 'petTotal': 0, 'petStock': 0},
+    ),
+    // payments/$id: requires paymentId, txId, customerId, amount, mode, date, type
+    _NodeResult(
+      node: FirebaseConfig.nodePayments, label: 'Payments', emoji: '💳',
+      scratchPayload: {'paymentId': ts, 'txId': ts, 'customerId': ts,
+        'amount': 0, 'mode': ts, 'date': ts, 'type': ts},
+    ),
+    // transactionRevisions/$revId: requires revId, txId, revNumber, createdAt, editedBy
+    _NodeResult(
+      node: FirebaseConfig.nodeRevisions, label: 'TX Revisions', emoji: '🔁',
+      scratchPayload: {'revId': ts, 'txId': ts, 'revNumber': 1,
+        'createdAt': ts, 'editedBy': ts},
+    ),
+    // inventoryMovements/$invId: requires invId, type, coolDelta, petDelta, createdAt
+    _NodeResult(
+      node: FirebaseConfig.nodeInventoryMovements, label: 'Inventory Movements', emoji: '📊',
+      scratchPayload: {'invId': ts, 'type': ts,
+        'coolDelta': 0, 'petDelta': 0, 'createdAt': ts},
+    ),
+    // load_unload/$tripId: requires id, date, coolLoaded, petLoaded
+    _NodeResult(
+      node: FirebaseConfig.nodeLoadUnload, label: 'Load / Unload Trips', emoji: '🚛',
+      scratchPayload: {'id': ts, 'date': ts, 'coolLoaded': 0, 'petLoaded': 0},
+    ),
+    // expenses/$id: requires id, amount, category, date
+    _NodeResult(
+      node: FirebaseConfig.nodeExpenses, label: 'Expenses', emoji: '🧾',
+      scratchPayload: {'id': ts, 'amount': 0, 'category': ts, 'date': ts},
+    ),
+    // staff/$userId: requires id, name, isActive
+    _NodeResult(
+      node: FirebaseConfig.nodeStaff, label: 'Staff', emoji: '👷',
+      scratchPayload: {'id': ts, 'name': ts, 'isActive': false},
+    ),
+    // auditLog/$auditId: requires id, type, description, performedBy, createdAt
+    _NodeResult(
+      node: FirebaseConfig.nodeAuditLog, label: 'Audit Log', emoji: '🕵️',
+      scratchPayload: {'id': ts, 'type': ts, 'description': ts,
+        'performedBy': ts, 'createdAt': ts},
+    ),
+    // areas/$areaId: requires id, name
+    _NodeResult(
+      node: FirebaseConfig.nodeAreas, label: 'Areas', emoji: '📍',
+      scratchPayload: {'id': ts, 'name': ts},
+    ),
+    // vehicles/$vehicleId: requires id, name, number
+    _NodeResult(
+      node: FirebaseConfig.nodeVehicles, label: 'Vehicles', emoji: '🚗',
+      scratchPayload: {'id': ts, 'name': ts, 'number': ts},
+    ),
+  ];
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // MAIN SCREEN
@@ -117,24 +190,33 @@ class _DiagState extends ConsumerState<FirebaseDiagnosticsScreen> {
       });
     }
 
-    // ── WRITE (write a scratch record, then delete it) ───────────────────────
+    // ── WRITE (write a schema-valid scratch record, then delete it) ────────────
+    // Uses node.scratchPayload which matches each node's .validate rule exactly.
+    // Root-object nodes (inventory, settings) don't have per-child validation
+    // so we write a harmless child flag and remove it immediately.
     setState(() => node.writeStatus = _Status.running);
-    final scratchKey = '__diag_${DateTime.now().millisecondsSinceEpoch}__';
+    final isRootNode = node.node == FirebaseConfig.nodeInventory ||
+        node.node == FirebaseConfig.nodeSettings;
+    const scratchKey = '__diag__';
     try {
       final sw = Stopwatch()..start();
-      await FirebaseService.instance.setChild(node.node, scratchKey, {
-        'diag': true,
-        'ts':   DateTime.now().toIso8601String(),
-        'node': node.node,
-      });
-      await FirebaseService.instance.removeChild(node.node, scratchKey);
+      if (isRootNode) {
+        // Root nodes: write + delete a harmless child to confirm write access.
+        await FirebaseService.instance.setChild(
+            node.node, scratchKey, {'__diag': true});
+        await FirebaseService.instance.removeChild(node.node, scratchKey);
+      } else {
+        // Collection nodes: write a schema-valid record then immediately delete it.
+        await FirebaseService.instance.setChild(
+            node.node, scratchKey, node.scratchPayload);
+        await FirebaseService.instance.removeChild(node.node, scratchKey);
+      }
       sw.stop();
       setState(() {
         node.writeMs     = sw.elapsedMilliseconds;
         node.writeStatus = _Status.ok;
       });
     } catch (e) {
-      // Attempt cleanup regardless
       try { await FirebaseService.instance.removeChild(node.node, scratchKey); } catch (_) {}
       setState(() {
         node.writeStatus = _Status.error;

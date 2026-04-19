@@ -1,11 +1,21 @@
+// ════════════════════════════════════════════════════════════════════════════
+// pin_repository.dart
+// FIX v2: companyId is now read lazily via a getter closure.
+// ════════════════════════════════════════════════════════════════════════════
+
 import '../providers/app_state.dart';
 import '../services/rtdb_user_datasource.dart';
 import '../utils/pin_hash_util.dart';
 
 class PinRepository {
-  PinRepository({required this.companyId});
+  /// FIX: accept a getter so companyId is always the live value, not whatever
+  /// was in CompanySession at the moment the provider was first constructed.
+  PinRepository({required String Function() companyIdGetter})
+      : _companyIdGetter = companyIdGetter;
 
-  final String companyId;
+  final String Function() _companyIdGetter;
+  String get companyId => _companyIdGetter();
+
   final _datasource = RTDBUserDataSource.instance;
 
   Future<StaffMember?> verifyPin(String pin, List<StaffMember> users) async {
@@ -33,11 +43,13 @@ class PinRepository {
     );
   }
 
+  /// Create or reset a hashed PIN for [userId].
+  /// Call this when adding a new staff member or when an owner resets a PIN.
   Future<void> createPinForUser(String userId, String pin) async {
     final salt = userId;
     final hash = PinHashUtil.hash(pin: pin, salt: salt);
     await _datasource.updateUser(companyId, userId, {
-      'pin': '',
+      'pin': '',         // clear any legacy plain-text pin
       'pinHash': hash,
       'pinSalt': salt,
     });

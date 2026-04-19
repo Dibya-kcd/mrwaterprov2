@@ -1162,7 +1162,7 @@ class _LedgerEditorState extends ConsumerState<LedgerEditor> {
       coolDamaged: _cdmg.clamp(0, 9999), petDamaged: _pdmg.clamp(0, 9999),
       coolPrice: _coolPrice, petPrice: _petPrice,
       billedAmount: _billed,
-      amountCollected: _amtCollected.clamp(0, _billed),
+      amountCollected: _amtCollected.clamp(0, _billed).toDouble(),
       damageCharge: (_cdmg + _pdmg) * ref.read(settingsProvider).damageChargePerJar,
       transportFee: _transportFee,
       paymentMode: _mode,

@@ -48,8 +48,10 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   String _fmtDate(DateTime d) => DateFormat('dd MMM').format(d);
+  // ignore: unused_element
   String _fmtFull(DateTime d) => DateFormat('dd MMM yyyy').format(d);
 
+  // ignore: unused_element
   bool get _isCustomRange => _preset == _DatePreset.custom;
 
   void _resetToToday() {
@@ -61,6 +63,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
     });
   }
 
+  // ignore: unused_element
   void _applyPreset(_DatePreset p) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -107,7 +110,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(builder: (ctx, setModal) {
 
-        Widget _presetChip(String label, _DatePreset p) {
+        Widget presetChip(String label, _DatePreset p) {
           final active = tmpPreset == p;
           return GestureDetector(
             onTap: () {
@@ -157,7 +160,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
           );
         }
 
-        Widget _catChip(String label, IconData icon, Color? col) {
+        Widget catChip(String label, IconData icon, Color? col) {
           final active = tmpFilter == label;
           final chipColor = col ?? primary;
           return GestureDetector(
@@ -221,11 +224,11 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                 color: AppColors.inkMuted, letterSpacing: 0.5)),
             const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _presetChip('Today',     _DatePreset.today),
-              _presetChip('Yesterday', _DatePreset.yesterday),
-              _presetChip('This Week', _DatePreset.last7),
-              _presetChip('This Month',_DatePreset.thisMonth),
-              _presetChip('Last 30d',  _DatePreset.last30),
+              presetChip('Today',     _DatePreset.today),
+              presetChip('Yesterday', _DatePreset.yesterday),
+              presetChip('This Week', _DatePreset.last7),
+              presetChip('This Month',_DatePreset.thisMonth),
+              presetChip('Last 30d',  _DatePreset.last30),
               // Custom chip
               GestureDetector(
                 onTap: () async {
@@ -290,9 +293,9 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                 color: AppColors.inkMuted, letterSpacing: 0.5)),
             const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _catChip('All',   Icons.list_rounded,           primary),
-              _catChip('Daily', Icons.local_shipping_rounded, primary),
-              _catChip('Event', Icons.celebration_rounded,    AppColors.purple),
+              catChip('All',   Icons.list_rounded,           primary),
+              catChip('Daily', Icons.local_shipping_rounded, primary),
+              catChip('Event', Icons.celebration_rounded,    AppColors.purple),
             ]),
             const SizedBox(height: 24),
 
@@ -552,7 +555,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                       AnimatedRotation(
                         turns: _summaryExpanded ? 0 : 0.5,
                         duration: const Duration(milliseconds: 220),
-                        child: Icon(Icons.keyboard_arrow_up_rounded,
+                        child: const Icon(Icons.keyboard_arrow_up_rounded,
                             size: 14, color: AppColors.inkMuted),
                       ),
                       const SizedBox(width: 6),
@@ -636,12 +639,80 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
         await showMrSheet(ctx, title: '📦 Edit Return',
             builder: (_) => ReturnJarForm(existing: tx));
       case 'event':
-        await showMrSheet(ctx, title: '🎉 Edit Event',
-            builder: (_) => EventForm(existing: tx));
+        if (tx.isMultiDayEvent) {
+          // Multi-day event: let user choose to edit this day or all-day meta
+          await _openMultiDayEditDialog(ctx, tx);
+        } else {
+          await showMrSheet(ctx, title: '🎉 Edit Event',
+              builder: (_) => EventForm(existing: tx));
+        }
       default:
         await showMrSheet(ctx, title: '🚚 Edit Delivery',
             builder: (_) => DeliveryForm(existing: tx));
     }
+  }
+
+  /// Dialog for multi-day event — lets user choose: edit this day or rename event.
+  Future<void> _openMultiDayEditDialog(BuildContext ctx, JarTransaction tx) async {
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    await showModalBottomSheet(
+      context: ctx,
+      backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Edit Multi-Day Event',
+              style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('${tx.eventName ?? 'Event'} · Day ${tx.eventDay ?? '?'} of ${tx.eventTotalDays}',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
+          const SizedBox(height: 20),
+          _EditOptionBtn(
+            icon: Icons.edit_calendar_rounded,
+            title: 'Edit this day only',
+            subtitle: 'Change jars, payment or status for Day ${tx.eventDay ?? '?'}',
+            color: AppColors.purple,
+            onTap: () {
+              Navigator.pop(ctx);
+              showMrSheet(ctx, title: '🎉 Edit Day ${tx.eventDay ?? ''}',
+                  builder: (_) => EventForm(existing: tx));
+            },
+          ),
+          const SizedBox(height: 10),
+          _EditOptionBtn(
+            icon: Icons.drive_file_rename_outline_rounded,
+            title: 'Edit event name / dates',
+            subtitle: 'Rename or update dates across ALL ${tx.eventTotalDays} days',
+            color: AppColors.primaryColor(isDark),
+            onTap: () {
+              Navigator.pop(ctx);
+              showMrSheet(ctx, title: '📋 Edit Event Details',
+                  builder: (_) => _EventMetaEditor(tx: tx));
+            },
+          ),
+          const SizedBox(height: 10),
+          _EditOptionBtn(
+            icon: Icons.delete_forever_rounded,
+            title: 'Delete entire event',
+            subtitle: 'Remove all ${tx.eventTotalDays} days and reverse inventory',
+            color: AppColors.dangerColor(isDark),
+            onTap: () async {
+              Navigator.pop(ctx);
+              final ok = await confirmDialog(ctx,
+                title: 'Delete Entire Event?',
+                message: 'All ${tx.eventTotalDays} days of "${tx.eventName}" will be deleted and inventory reversed.',
+              );
+              if (ok && ctx.mounted) {
+                ref.read(transactionsProvider.notifier).deleteEvent(tx.eventId!);
+                showToast(ctx, '🗑 Event deleted', error: true);
+              }
+            },
+          ),
+        ]),
+      ),
+    );
   }
 
   /// Detect transaction type purely from field values.
@@ -1402,6 +1473,21 @@ class _TxnCard extends StatelessWidget {
                     if (_isEvent && tx.eventStatus != null) ...[
                       const SizedBox(width: 4),
                       _EventStatusBadge(status: tx.eventStatus!, isDark: isDark),
+                    ],
+                    if (_isEvent && tx.isMultiDayEvent) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.purple.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'D${tx.eventDay}/${tx.eventTotalDays}',
+                          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800,
+                              color: AppColors.purple),
+                        ),
+                      ),
                     ],
                   ]),
                   const SizedBox(height: 2),
@@ -2393,7 +2479,17 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 2. EVENT FORM
+// 2. EVENT FORM  — single-day + multi-day support
+//
+// Multi-day logic:
+//   • A toggle "Multi-day event?" switches between single-day and range mode.
+//   • In range mode the user picks a date range (start → end).
+//   • A per-day list appears where jar counts default to the global values but
+//     can be overridden individually per day.
+//   • Saving creates N separate JarTransactions all sharing the same eventId,
+//     eventStartDate, eventEndDate — one per day.
+//   • Transport fee is only applied to Day 1 to avoid double-charging.
+//   • Advance/partial payment amount can be recorded on Day 1 only.
 // ══════════════════════════════════════════════════════════════════════════════
 class EventForm extends ConsumerStatefulWidget {
   final JarTransaction? existing;
@@ -2419,6 +2515,12 @@ class _EventFormState extends ConsumerState<EventForm> {
   final _coolOverrideCtrl = TextEditingController();
   final _petOverrideCtrl  = TextEditingController();
 
+  // ── Multi-day state ────────────────────────────────────────────────────────
+  bool _isMultiDay = false;
+  DateTime? _eventStart;
+  DateTime? _eventEnd;
+  List<_DayEntry> _dayEntries = [];
+
   @override
   void initState() {
     super.initState();
@@ -2434,6 +2536,12 @@ class _EventFormState extends ConsumerState<EventForm> {
       if (e.transportFee > 0) _transportCtrl.text = e.transportFee.toInt().toString();
       _eventStatus = e.eventStatus ?? _autoStatus(e.date);
       try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
+      // Restore multi-day state when editing an existing multi-day event day
+      if (e.isMultiDayEvent) {
+        _isMultiDay = true;
+        try { _eventStart = DateTime.parse(e.eventStartDate!); } catch (_) {}
+        try { _eventEnd   = DateTime.parse(e.eventEndDate!);   } catch (_) {}
+      }
     } else {
       final pre = ref.read(selectedCustomerForTxnProvider);
       if (pre != null) {
@@ -2486,7 +2594,27 @@ class _EventFormState extends ConsumerState<EventForm> {
     _petOverrideCtrl.text  = c.petPriceOverride?.toStringAsFixed(0)  ?? '';
   });
 
-  Future<void> _save() async {
+  // ── Rebuild day entries whenever start/end changes ─────────────────────────
+  void _rebuildDayEntries() {
+    if (_eventStart == null || _eventEnd == null) return;
+    final totalDays = _eventEnd!.difference(_eventStart!).inDays + 1;
+    if (totalDays < 1 || totalDays > 30) return; // sanity cap
+    final prev = List<_DayEntry>.from(_dayEntries);
+    _dayEntries = List.generate(totalDays, (i) {
+      final date = _eventStart!.add(Duration(days: i));
+      // Keep existing edits if the user already changed a day's count
+      final existing = i < prev.length ? prev[i] : null;
+      return _DayEntry(
+        date: date,
+        cool: existing?.cool ?? _cd,
+        pet:  existing?.pet  ?? _pd,
+      );
+    });
+    setState(() {});
+  }
+
+  // ── Save single-day event (original behaviour) ─────────────────────────────
+  Future<void> _saveSingleDay() async {
     if (_cust == null) { showToast(context, 'Select a customer', error: true); return; }
     if (!_hasAny)      { showToast(context, 'Add at least one jar', error: true); return; }
     if (!_formKey.currentState!.validate()) return;
@@ -2517,6 +2645,60 @@ class _EventFormState extends ConsumerState<EventForm> {
     }
   }
 
+  // ── Save multi-day event — creates N linked transactions ──────────────────
+  Future<void> _saveMultiDay() async {
+    if (_cust == null)          { showToast(context, 'Select a customer', error: true); return; }
+    if (_dayEntries.isEmpty)    { showToast(context, 'Select a date range first', error: true); return; }
+    if (!_dayEntries.any((d) => d.cool > 0 || d.pet > 0)) {
+      showToast(context, 'Add jars for at least one day', error: true); return;
+    }
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    final sharedEventId = _uuid.v4();
+    final now      = DateTime.now().toIso8601String();
+    final startStr = DateFormat('yyyy-MM-dd').format(_eventStart!);
+    final endStr   = DateFormat('yyyy-MM-dd').format(_eventEnd!);
+    final name     = _eventNameCtrl.text.trim();
+
+    for (int i = 0; i < _dayEntries.length; i++) {
+      final day = _dayEntries[i];
+      if (day.cool == 0 && day.pet == 0) continue; // skip zero-jar days
+      final isFirstDay = i == 0;
+      final dayBilled  = (day.cool * _effectiveCoolPrice) + (day.pet * _effectivePetPrice)
+          + (isFirstDay ? _transport : 0);
+      final tx = JarTransaction(
+        id: _uuid.v4(),
+        customerId: _cust!.id, customerName: _cust!.name,
+        date: DateFormat('yyyy-MM-dd').format(day.date),
+        coolDelivered: day.cool, petDelivered: day.pet,
+        coolReturned: 0, petReturned: 0,
+        coolDamaged: 0, petDamaged: 0,
+        coolPrice: _effectiveCoolPrice, petPrice: _effectivePetPrice,
+        billedAmount: dayBilled,
+        amountCollected: isFirstDay ? _collected : 0,
+        paymentMode: _mode,
+        transportFee: isFirstDay ? _transport : 0,
+        note: isFirstDay ? _noteCtrl.text.trim() : '',
+        createdAt: now,
+        createdBy: 'Admin',
+        deliveryType: 'event',
+        eventName: name,
+        eventStatus: _autoStatus(DateFormat('yyyy-MM-dd').format(day.date)),
+        eventId: sharedEventId,
+        eventStartDate: startStr,
+        eventEndDate: endStr,
+        eventDay: i + 1,
+      );
+      await ref.read(transactionsProvider.notifier).add(tx);
+    }
+    final nav = Navigator.of(context);
+    final savedCount = _dayEntries.length;
+    if (context.mounted) {
+      nav.pop();
+      showToast(context, '✅ $savedCount-day event saved', success: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark  = Theme.of(context).brightness == Brightness.dark;
@@ -2529,42 +2711,44 @@ class _EventFormState extends ConsumerState<EventForm> {
         begin: Alignment.centerLeft, end: Alignment.centerRight);
 
     return Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // ── Date Selector ─────────────────────────────────────────────────────
-      Center(
-        child: GestureDetector(
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: _txDate,
-              firstDate: DateTime(DateTime.now().year - 2),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
-            );
-            if (picked != null) setState(() => _txDate = picked);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                DateFormat('d MMM yyyy').format(_txDate),
-                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+
+      // ── Date Selector (single-day only) ────────────────────────────────────
+      if (!_isMultiDay)
+        Center(
+          child: GestureDetector(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _txDate,
+                firstDate: DateTime(DateTime.now().year - 2),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (picked != null) setState(() => _txDate = picked);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface2Dark : const Color(0xFFEAF2FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isDark ? AppColors.separatorDark : const Color(0xFFBDD5F8)),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
-            ]),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.event_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat('d MMM yyyy').format(_txDate),
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.edit_rounded, size: 12, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+              ]),
+            ),
           ),
         ),
-      ),
-      const SizedBox(height: 20),
+      if (!_isMultiDay) const SizedBox(height: 20),
 
-      // ── Voice fill button ──────────────────────────────────────────────────
-      if (widget.existing == null)
+      // ── Voice fill button ───────────────────────────────────────────────────
+      if (widget.existing == null && !_isMultiDay)
         Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: Row(children: [
@@ -2587,12 +2771,40 @@ class _EventFormState extends ConsumerState<EventForm> {
           ]),
         ),
 
+      // ── Event Details (name + transport) ────────────────────────────────────
       _EventDetailsSection(nameCtrl: _eventNameCtrl, transportCtrl: _transportCtrl,
-        eventDate: _txDate, isDark: isDark,
+        eventDate: _isMultiDay ? null : _txDate, isDark: isDark,
         onDatePicked: (d) => setState(() => _txDate = d ?? _txDate),
         onTransportChanged: (_) => setState(() {})),
-      const SizedBox(height: 20),
+      const SizedBox(height: 16),
 
+      // ── Multi-day toggle (only on new events, not edits) ───────────────────
+      if (widget.existing == null)
+        _MultiDayToggle(
+          isMultiDay: _isMultiDay,
+          isDark: isDark,
+          onToggle: (v) => setState(() {
+            _isMultiDay = v;
+            if (!v) _dayEntries = [];
+          }),
+        ),
+      if (widget.existing == null) const SizedBox(height: 16),
+
+      // ── Date range picker (multi-day) ──────────────────────────────────────
+      if (_isMultiDay && widget.existing == null) ...[
+        _DateRangePicker(
+          startDate: _eventStart,
+          endDate: _eventEnd,
+          isDark: isDark,
+          onRangePicked: (start, end) {
+            setState(() { _eventStart = start; _eventEnd = end; });
+            _rebuildDayEntries();
+          },
+        ),
+        const SizedBox(height: 16),
+      ],
+
+      // ── Customer Picker ─────────────────────────────────────────────────────
       const FieldLabel('Customer / Organisation *'),
       _CustPicker(selected: _cust, customers: custs, onSelect: _onCustSelected),
       if (_cust != null) _InlinePriceOverride(
@@ -2603,96 +2815,506 @@ class _EventFormState extends ConsumerState<EventForm> {
         onChanged: () => setState(() {}), isDark: isDark),
       const SizedBox(height: 20),
 
-      const FieldLabel('Jars — Event Delivery'),
-      Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.bgDark : AppColors.bg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+      // ── Single-day jar table ────────────────────────────────────────────────
+      if (!_isMultiDay) ...[
+        const FieldLabel('Jars — Event Delivery'),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.bgDark : AppColors.bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+          ),
+          child: Column(children: [
+            Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 0), child: LayoutBuilder(builder: (ctx, bc) {
+              final labelW = (bc.maxWidth * 0.22).clamp(56.0, 80.0);
+              return Row(children: [
+                SizedBox(width: labelW),
+                const Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
+                    sub: 'jars to event', color: AppColors.purple)),
+              ]);
+            })),
+            Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
+            _JarInputRow(jarIcon: CoolJarIcon(size: 22, color: coolC), label: 'Cool', color: coolC,
+              stockInfo: 'Stock: ${inv.coolStock}',
+              priceInfo: _effectiveCoolPrice != s.coolPrice ? '₹${_effectiveCoolPrice.toInt()}/jar ★' : '₹${s.coolPrice.toInt()}/jar',
+              unitPrice: _effectiveCoolPrice, delivered: _cd, returned: 0, showReturn: false,
+              maxDeliver: inv.coolStock + (widget.existing?.coolDelivered ?? 0),
+              maxReturn: 99,
+              onDeliverChanged: (v) => setState(() => _cd = v),
+              onReturnChanged: (_) {}),
+            Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
+            _JarInputRow(jarIcon: PetJarIcon(size: 22, color: petC), label: 'PET', color: petC,
+              stockInfo: 'Stock: ${inv.petStock}',
+              priceInfo: _effectivePetPrice != s.petPrice ? '₹${_effectivePetPrice.toInt()}/jar ★' : '₹${s.petPrice.toInt()}/jar',
+              unitPrice: _effectivePetPrice, delivered: _pd, returned: 0, showReturn: false,
+              maxDeliver: inv.petStock + (widget.existing?.petDelivered ?? 0),
+              maxReturn: 99,
+              onDeliverChanged: (v) => setState(() => _pd = v),
+              onReturnChanged: (_) {}),
+          ]),
         ),
-        child: Column(children: [
-          Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 0), child: LayoutBuilder(builder: (ctx, bc) {
-            final labelW = (bc.maxWidth * 0.22).clamp(56.0, 80.0);
-            return Row(children: [
-              SizedBox(width: labelW),
-              const Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
-                  sub: 'jars to event', color: AppColors.purple)),
-            ]);
-          })),
-          Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
-          _JarInputRow(jarIcon: CoolJarIcon(size: 22, color: coolC), label: 'Cool', color: coolC,
-            stockInfo: 'Stock: ${inv.coolStock}',
-            priceInfo: _effectiveCoolPrice != s.coolPrice ? '₹${_effectiveCoolPrice.toInt()}/jar ★' : '₹${s.coolPrice.toInt()}/jar',
-            unitPrice: _effectiveCoolPrice, delivered: _cd, returned: 0, showReturn: false,
-            maxDeliver: inv.coolStock + (widget.existing?.coolDelivered ?? 0),
-            maxReturn: 99,
-            onDeliverChanged: (v) => setState(() => _cd = v),
-            onReturnChanged: (_) {}),
-          Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
-          _JarInputRow(jarIcon: PetJarIcon(size: 22, color: petC), label: 'PET', color: petC,
-            stockInfo: 'Stock: ${inv.petStock}',
-            priceInfo: _effectivePetPrice != s.petPrice ? '₹${_effectivePetPrice.toInt()}/jar ★' : '₹${s.petPrice.toInt()}/jar',
-            unitPrice: _effectivePetPrice, delivered: _pd, returned: 0, showReturn: false,
-            maxDeliver: inv.petStock + (widget.existing?.petDelivered ?? 0),
-            maxReturn: 99,
-            onDeliverChanged: (v) => setState(() => _pd = v),
-            onReturnChanged: (_) {}),
-        ]),
-      ),
-      const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-      _EventStatusSection(
-        status: _eventStatus, eventDate: _txDate,
-        coolDelivered: _cd, petDelivered: _pd,
-        coolReturned: _cr, petReturned: _pr,
-        coolReturnDmg: _cdmg, petReturnDmg: _pdmg, isDark: isDark,
-        onStatusChange: (s) => setState(() => _eventStatus = s),
-        onCoolReturnChanged: (v) => setState(() => _cr = v),
-        onPetReturnChanged:  (v) => setState(() => _pr = v),
-        onCoolDmgChanged:    (v) => setState(() => _cdmg = v),
-        onPetDmgChanged:     (v) => setState(() => _pdmg = v),
-        maxCoolReturn: _cd, maxPetReturn: _pd),
+        _EventStatusSection(
+          status: _eventStatus, eventDate: _txDate,
+          coolDelivered: _cd, petDelivered: _pd,
+          coolReturned: _cr, petReturned: _pr,
+          coolReturnDmg: _cdmg, petReturnDmg: _pdmg, isDark: isDark,
+          onStatusChange: (s) => setState(() => _eventStatus = s),
+          onCoolReturnChanged: (v) => setState(() => _cr = v),
+          onPetReturnChanged:  (v) => setState(() => _pr = v),
+          onCoolDmgChanged:    (v) => setState(() => _cdmg = v),
+          onPetDmgChanged:     (v) => setState(() => _pdmg = v),
+          maxCoolReturn: _cd, maxPetReturn: _pd),
 
-      if (_billed > 0) ...[
-        const SizedBox(height: 12),
-        _BillCard(cd: _cd, pd: _pd, cdmg: 0, pdmg: 0,
-          coolPrice: _effectiveCoolPrice, petPrice: _effectivePetPrice,
-          dmgPrice: s.damageChargePerJar, total: _billed,
-          advance: _cust?.advanceBalance ?? 0, transportFee: _transport),
+        if (_billed > 0) ...[
+          const SizedBox(height: 12),
+          _BillCard(cd: _cd, pd: _pd, cdmg: 0, pdmg: 0,
+            coolPrice: _effectiveCoolPrice, petPrice: _effectivePetPrice,
+            dmgPrice: s.damageChargePerJar, total: _billed,
+            advance: _cust?.advanceBalance ?? 0, transportFee: _transport),
+        ],
+        const SizedBox(height: 16),
+
+        const FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
+        _AmountField(ctrl: _amtCtrl, hint: _billed.toInt().toString(),
+          advance: _cust?.advanceBalance ?? 0,
+          onChanged: (v) => setState(() => _collected = v),
+          onUseAdvance: () => setState(() { _collected = _billed; _amtCtrl.text = _billed.toInt().toString(); })),
+        const SizedBox(height: 16),
+
+        const FieldLabel('Payment Mode'),
+        PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
+        const SizedBox(height: 16),
+
+        const FieldLabel('Note (optional)'),
+        TextFormField(controller: _noteCtrl, maxLines: 2,
+            decoration: const InputDecoration(hintText: 'Any notes...')),
+        const SizedBox(height: 24),
+
+        if (widget.existing != null) ...[
+          _DeleteBtn(isDark: isDark,
+              onTap: () => _confirmDeleteTx(context, ref, widget.existing!, _cust?.name ?? '')),
+          const SizedBox(height: 12),
+        ],
+        GradientButton(
+          label: widget.existing != null ? 'Update Event' : '🎉 Save Event',
+          loading: _saving,
+          onTap: _hasAny && _cust != null ? _saveSingleDay : null,
+          gradient: (!_hasAny || _cust == null)
+              ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade400])
+              : eventGrad,
+        ),
       ],
-      const SizedBox(height: 16),
 
-      const FieldLabel('Amount Collected', hint: '(leave 0 = unpaid)'),
-      _AmountField(ctrl: _amtCtrl, hint: _billed.toInt().toString(),
-        advance: _cust?.advanceBalance ?? 0,
-        onChanged: (v) => setState(() => _collected = v),
-        onUseAdvance: () => setState(() { _collected = _billed; _amtCtrl.text = _billed.toInt().toString(); })),
-      const SizedBox(height: 16),
+      // ── Multi-day jar table + summary ───────────────────────────────────────
+      if (_isMultiDay && _dayEntries.isNotEmpty) ...[
+        _MultiDayJarTable(
+          entries: _dayEntries,
+          coolPrice: _effectiveCoolPrice,
+          petPrice: _effectivePetPrice,
+          coolColor: coolC,
+          petColor: petC,
+          isDark: isDark,
+          transport: _transport,
+          onChanged: () => setState(() {}),
+        ),
+        const SizedBox(height: 16),
 
-      const FieldLabel('Payment Mode'),
-      PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
-      const SizedBox(height: 16),
-
-      const FieldLabel('Note (optional)'),
-      TextFormField(controller: _noteCtrl, maxLines: 2,
-          decoration: const InputDecoration(hintText: 'Any notes...')),
-      const SizedBox(height: 24),
-
-      if (widget.existing != null) ...[
-        _DeleteBtn(isDark: isDark,
-            onTap: () => _confirmDeleteTx(context, ref, widget.existing!, _cust?.name ?? '')),
+        // Advance payment for Day 1
+        const FieldLabel('Advance / Partial Payment (Day 1 only)', hint: '(leave 0 = unpaid)'),
+        _AmountField(
+          ctrl: _amtCtrl,
+          hint: _dayEntries.isEmpty ? '0'
+              : ((_dayEntries[0].cool * _effectiveCoolPrice) +
+                 (_dayEntries[0].pet  * _effectivePetPrice) + _transport).toInt().toString(),
+          advance: _cust?.advanceBalance ?? 0,
+          onChanged: (v) => setState(() => _collected = v),
+          onUseAdvance: () {
+            final day1 = (_dayEntries[0].cool * _effectiveCoolPrice) +
+                         (_dayEntries[0].pet  * _effectivePetPrice) + _transport;
+            setState(() { _collected = day1; _amtCtrl.text = day1.toInt().toString(); });
+          },
+        ),
         const SizedBox(height: 12),
+
+        const FieldLabel('Payment Mode'),
+        PaymentModePicker(selected: _mode, onSelect: (m) => setState(() => _mode = m)),
+        const SizedBox(height: 12),
+
+        const FieldLabel('Note (optional)'),
+        TextFormField(controller: _noteCtrl, maxLines: 2,
+            decoration: const InputDecoration(hintText: 'Any notes...')),
+        const SizedBox(height: 12),
+
+        // Grand total summary
+        _MultiDayTotalCard(
+          entries: _dayEntries,
+          coolPrice: _effectiveCoolPrice,
+          petPrice: _effectivePetPrice,
+          transport: _transport,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 16),
+
+        GradientButton(
+          label: '🎉 Save ${_dayEntries.length}-Day Event',
+          loading: _saving,
+          onTap: _cust != null && _dayEntries.any((d) => d.cool > 0 || d.pet > 0)
+              ? _saveMultiDay : null,
+          gradient: (_cust == null || !_dayEntries.any((d) => d.cool > 0 || d.pet > 0))
+              ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade400])
+              : eventGrad,
+        ),
       ],
-      GradientButton(
-        label: widget.existing != null ? 'Update Event' : '🎉 Save Event',
-        loading: _saving,
-        onTap: _hasAny && _cust != null ? _save : null,
-        gradient: (!_hasAny || _cust == null)
-            ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade400])
-            : eventGrad,
-      ),
+
+      // Prompt when multi-day toggled but no range yet
+      if (_isMultiDay && _dayEntries.isEmpty && _eventStart == null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.purple.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.purple),
+              const SizedBox(width: 10),
+              Expanded(child: Text(
+                'Pick a start and end date above to set up the day-by-day schedule.',
+                style: GoogleFonts.inter(fontSize: 13, color: AppColors.purple, height: 1.4),
+              )),
+            ]),
+          ),
+        ),
     ]));
   }
+}
+
+// ── Per-day entry model ────────────────────────────────────────────────────────
+class _DayEntry {
+  final DateTime date;
+  int cool;
+  int pet;
+  _DayEntry({required this.date, required this.cool, required this.pet});
+}
+
+// ── Multi-day toggle ──────────────────────────────────────────────────────────
+class _MultiDayToggle extends StatelessWidget {
+  final bool isMultiDay, isDark;
+  final ValueChanged<bool> onToggle;
+  const _MultiDayToggle({required this.isMultiDay, required this.isDark, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onToggle(!isMultiDay),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isMultiDay
+              ? AppColors.purple.withValues(alpha: 0.08)
+              : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isMultiDay ? AppColors.purple.withValues(alpha: 0.3)
+                : (isDark ? AppColors.separatorDark : AppColors.separator),
+          ),
+        ),
+        child: Row(children: [
+          Icon(Icons.date_range_rounded,
+              size: 18, color: isMultiDay ? AppColors.purple : AppColors.inkMuted),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Multi-day event?',
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700,
+                    color: isMultiDay ? AppColors.purple : (isDark ? AppColors.inkDark : AppColors.ink))),
+            Text('Spans multiple consecutive days',
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
+          ])),
+          Switch(
+            value: isMultiDay,
+            onChanged: onToggle,
+            activeThumbColor: AppColors.purple,
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── Date range picker ─────────────────────────────────────────────────────────
+class _DateRangePicker extends StatelessWidget {
+  final DateTime? startDate, endDate;
+  final bool isDark;
+  final void Function(DateTime start, DateTime end) onRangePicked;
+  const _DateRangePicker({required this.startDate, required this.endDate,
+      required this.isDark, required this.onRangePicked});
+
+  @override
+  Widget build(BuildContext context) {
+    final days = (startDate != null && endDate != null)
+        ? endDate!.difference(startDate!).inDays + 1
+        : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.purple.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.date_range_rounded, size: 15, color: AppColors.purple),
+          const SizedBox(width: 8),
+          Text('Event Date Range', style: GoogleFonts.inter(
+              fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.purple)),
+          if (days > 0) ...[
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.purple.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('$days days', style: GoogleFonts.inter(
+                  fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.purple)),
+            ),
+          ],
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _DateField(
+            label: 'START',
+            date: startDate,
+            isDark: isDark, color: AppColors.purple,
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                initialDate: startDate ?? DateTime.now(),
+                firstDate: DateTime(DateTime.now().year - 2),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (d != null) {
+                final end = endDate ?? d;
+                onRangePicked(d, end.isBefore(d) ? d : end);
+              }
+            },
+          )),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.inkMuted),
+          ),
+          Expanded(child: _DateField(
+            label: 'END',
+            date: endDate,
+            isDark: isDark, color: AppColors.purple,
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                initialDate: endDate ?? (startDate ?? DateTime.now()),
+                firstDate: startDate ?? DateTime(DateTime.now().year - 2),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (d != null) {
+                final start = startDate ?? d;
+                onRangePicked(start.isAfter(d) ? d : start, d);
+              }
+            },
+          )),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _DateField extends StatelessWidget {
+  final String label;
+  final DateTime? date;
+  final bool isDark;
+  final Color color;
+  final VoidCallback onTap;
+  const _DateField({required this.label, required this.date, required this.isDark,
+      required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: date != null ? color.withValues(alpha: 0.08) : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: date != null ? color.withValues(alpha: 0.3)
+            : (isDark ? AppColors.separatorDark : AppColors.separator)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700,
+            color: color, letterSpacing: 0.5)),
+        const SizedBox(height: 4),
+        Row(children: [
+          Icon(Icons.calendar_today_rounded, size: 12, color: date != null ? color : AppColors.inkMuted),
+          const SizedBox(width: 5),
+          Expanded(child: Text(
+            date != null ? DateFormat('dd MMM yy').format(date!) : 'Pick date',
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600,
+                color: date != null ? (isDark ? AppColors.inkDark : AppColors.ink) : AppColors.inkMuted),
+            overflow: TextOverflow.ellipsis,
+          )),
+        ]),
+      ]),
+    ),
+  );
+}
+
+// ── Multi-day jar table ───────────────────────────────────────────────────────
+class _MultiDayJarTable extends StatefulWidget {
+  final List<_DayEntry> entries;
+  final double coolPrice, petPrice, transport;
+  final Color coolColor, petColor;
+  final bool isDark;
+  final VoidCallback onChanged;
+  const _MultiDayJarTable({
+    required this.entries, required this.coolPrice, required this.petPrice,
+    required this.coolColor, required this.petColor, required this.isDark,
+    required this.transport, required this.onChanged,
+  });
+  @override
+  State<_MultiDayJarTable> createState() => _MultiDayJarTableState();
+}
+
+class _MultiDayJarTableState extends State<_MultiDayJarTable> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Text('Day-by-Day Schedule',
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+        const Spacer(),
+        Text('${widget.entries.length} days',
+            style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
+      ]),
+      const SizedBox(height: 8),
+      ...widget.entries.asMap().entries.map((e) {
+        final i   = e.key;
+        final day = e.value;
+        final isFirst = i == 0;
+        final dayBilled = (day.cool * widget.coolPrice) + (day.pet * widget.petPrice)
+            + (isFirst ? widget.transport : 0);
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark(context) ? AppColors.bgDark : AppColors.bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isDark(context) ? AppColors.separatorDark : AppColors.separator),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.purple.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text('Day ${i + 1}',
+                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800,
+                        color: AppColors.purple)),
+              ),
+              const SizedBox(width: 8),
+              Text(DateFormat('EEE, dd MMM').format(day.date),
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Text('₹${dayBilled.toInt()}',
+                  style: GoogleFonts.jetBrainsMono(fontSize: 14, fontWeight: FontWeight.w700,
+                      color: AppColors.purple)),
+              if (isFirst && widget.transport > 0) ...[
+                const SizedBox(width: 4),
+                Text('+ ₹${widget.transport.toInt()} transport',
+                    style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
+              ],
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              // Cool stepper
+              Expanded(child: Row(children: [
+                CoolJarIcon(size: 16, color: widget.coolColor),
+                const SizedBox(width: 6),
+                Expanded(child: _EditableStepper(
+                  value: day.cool,
+                  max: 999,
+                  color: widget.coolColor,
+                  onChanged: (v) { setState(() => day.cool = v); widget.onChanged(); },
+                )),
+              ])),
+              const SizedBox(width: 12),
+              // PET stepper
+              Expanded(child: Row(children: [
+                PetJarIcon(size: 16, color: widget.petColor),
+                const SizedBox(width: 6),
+                Expanded(child: _EditableStepper(
+                  value: day.pet,
+                  max: 999,
+                  color: widget.petColor,
+                  onChanged: (v) { setState(() => day.pet = v); widget.onChanged(); },
+                )),
+              ])),
+            ]),
+          ]),
+        );
+      }),
+    ]);
+  }
+
+  bool isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+}
+
+// ── Multi-day grand total card ────────────────────────────────────────────────
+class _MultiDayTotalCard extends StatelessWidget {
+  final List<_DayEntry> entries;
+  final double coolPrice, petPrice, transport;
+  final bool isDark;
+  const _MultiDayTotalCard({required this.entries, required this.coolPrice,
+      required this.petPrice, required this.transport, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCool  = entries.fold(0, (s, d) => s + d.cool);
+    final totalPet   = entries.fold(0, (s, d) => s + d.pet);
+    final grandTotal = (totalCool * coolPrice) + (totalPet * petPrice) + transport;
+    final activeDays = entries.where((d) => d.cool > 0 || d.pet > 0).length;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+            colors: [Color(0xFF4A2C8F), Color(0xFF7B61FF)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(children: [
+        _r('Total Cool Jars',  '$totalCool jars'),
+        _r('Total PET Jars',   '$totalPet jars'),
+        if (transport > 0) _r('Transport', '₹${transport.toInt()}'),
+        const Divider(color: Colors.white24, height: 16),
+        _r('Active Days',      '$activeDays of ${entries.length}'),
+        _r('Grand Total',      '₹${grandTotal.toInt()}', bold: true),
+      ]),
+    );
+  }
+
+  Widget _r(String l, String v, {bool bold = false}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(children: [
+      Text(l, style: GoogleFonts.inter(fontSize: 13, color: Colors.white70)),
+      const Spacer(),
+      Text(v, style: GoogleFonts.jetBrainsMono(fontSize: bold ? 16 : 13,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: Colors.white)),
+    ]),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -4750,3 +5372,188 @@ class _ReturnRow extends StatelessWidget {
 // VoiceFab is now defined in voice_assistant.dart (public class).
 // It calls openVoiceAssistant(context) which uses Navigator.push
 // instead of showMrSheet — fixes the bottom sheet height hang.
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EVENT META EDITOR — edit event name / dates across all days of a group
+// ══════════════════════════════════════════════════════════════════════════════
+class _EventMetaEditor extends ConsumerStatefulWidget {
+  final JarTransaction tx; // any day from the event group
+  const _EventMetaEditor({required this.tx});
+  @override
+  ConsumerState<_EventMetaEditor> createState() => _EventMetaEditorState();
+}
+
+class _EventMetaEditorState extends ConsumerState<_EventMetaEditor> {
+  late final TextEditingController _nameCtrl;
+  late DateTime _startDate;
+  late DateTime _endDate;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.tx.eventName ?? '');
+    try { _startDate = DateTime.parse(widget.tx.eventStartDate!); }
+    catch (_) { _startDate = DateTime.now(); }
+    try { _endDate = DateTime.parse(widget.tx.eventEndDate!); }
+    catch (_) { _endDate = DateTime.now(); }
+  }
+
+  @override
+  void dispose() { _nameCtrl.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    if (_nameCtrl.text.trim().isEmpty) {
+      showToast(context, 'Enter event name', error: true); return;
+    }
+    setState(() => _saving = true);
+    await ref.read(transactionsProvider.notifier).updateEventMeta(
+      eventId: widget.tx.eventId!,
+      newEventName: _nameCtrl.text.trim(),
+      newEventStartDate: DateFormat('yyyy-MM-dd').format(_startDate),
+      newEventEndDate: DateFormat('yyyy-MM-dd').format(_endDate),
+    );
+    if (context.mounted) {
+      Navigator.pop(context);  // ignore: use_build_context_synchronously
+      showToast(context, '✅ Event details updated across all days', success: true);  // ignore: use_build_context_synchronously
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final totalDays = widget.tx.eventTotalDays;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Info banner
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.purple.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.info_outline_rounded, size: 15, color: AppColors.purple),
+          const SizedBox(width: 8),
+          Expanded(child: Text(
+            'Changes apply to all $totalDays days of this event. Jar quantities are NOT affected.',
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.purple, height: 1.4),
+          )),
+        ]),
+      ),
+      const SizedBox(height: 20),
+
+      const FieldLabel('Event Name'),
+      TextFormField(
+        controller: _nameCtrl,
+        decoration: const InputDecoration(hintText: 'e.g. Annual Conference, Wedding'),
+      ),
+      const SizedBox(height: 16),
+
+      const FieldLabel('Start Date'),
+      GestureDetector(
+        onTap: () async {
+          final d = await showDatePicker(
+            context: context,
+            initialDate: _startDate,
+            firstDate: DateTime(DateTime.now().year - 2),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+          );
+          if (d != null) setState(() => _startDate = d);
+        },
+        child: _DateDisplayField(date: _startDate, isDark: isDark),
+      ),
+      const SizedBox(height: 12),
+
+      const FieldLabel('End Date'),
+      GestureDetector(
+        onTap: () async {
+          final d = await showDatePicker(
+            context: context,
+            initialDate: _endDate,
+            firstDate: _startDate,
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+          );
+          if (d != null) setState(() => _endDate = d);
+        },
+        child: _DateDisplayField(date: _endDate, isDark: isDark),
+      ),
+      const SizedBox(height: 24),
+
+      GradientButton(
+        label: '💾 Save Event Details',
+        loading: _saving,
+        onTap: _save,
+        gradient: const LinearGradient(colors: [Color(0xFF7B61FF), Color(0xFFB388FF)],
+            begin: Alignment.centerLeft, end: Alignment.centerRight),
+      ),
+    ]);
+  }
+}
+
+class _DateDisplayField extends StatelessWidget {
+  final DateTime date;
+  final bool isDark;
+  const _DateDisplayField({required this.date, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 48,
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    decoration: BoxDecoration(
+      color: isDark ? AppColors.surface2Dark : AppColors.surface2,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+    ),
+    child: Row(children: [
+      const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.inkMuted),
+      const SizedBox(width: 10),
+      Text(DateFormat('dd MMM yyyy').format(date),
+          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+      const Spacer(),
+      const Icon(Icons.edit_rounded, size: 14, color: AppColors.inkMuted),
+    ]),
+  );
+}
+
+// ── Edit option button (used in multi-day edit dialog) ────────────────────────
+class _EditOptionBtn extends StatelessWidget {
+  final IconData icon;
+  final String title, subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  const _EditOptionBtn({required this.icon, required this.title,
+      required this.subtitle, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+            Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted, height: 1.3)),
+          ])),
+          Icon(Icons.chevron_right_rounded, size: 18, color: color.withValues(alpha: 0.5)),
+        ]),
+      ),
+    );
+  }
+}
