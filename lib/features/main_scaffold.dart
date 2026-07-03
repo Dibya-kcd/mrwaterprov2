@@ -322,14 +322,9 @@ class _ProfileSheet extends ConsumerWidget {
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Center(child: Column(children: [
-        Container(width: 64, height: 64,
-          decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
-          child: Center(child: Text(
-            settings.ownerName.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase(),
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
-          ))),
+        const SizedBox(height: 8),
+        Text(settings.ownerName, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
-        Text(settings.ownerName, style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
         Text(settings.businessName, style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
         if (settings.phone.isNotEmpty)
           Text(settings.phone, style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
@@ -446,42 +441,35 @@ class _BurgerDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings    = ref.watch(settingsProvider);
     final primary     = Theme.of(context).colorScheme.primary;
     final sessionUser = ref.watch(sessionUserProvider);
     final visibleNav  = _navItems.where((item) =>
         item.permission == null || sessionUser == null || sessionUser.can(item.permission!)).toList();
 
     return Drawer(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
+      backgroundColor: Colors.white,
       child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [
-              primary.withValues(alpha: 0.15),
-              primary.withValues(alpha: 0.04),
+              primary,
+              primary.withValues(alpha: 0.85),
             ], begin: Alignment.topLeft, end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(children: [
-            Container(
-              width: 44, height: 44,
-              decoration: const BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle),
-              child: Center(child: Text(
-                settings.ownerName.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase(),
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
-              )),
-            ),
+            const AppLogo(height: 52, onDark: true),
             const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              AppLogo(height: 60, onDark: isDark),
-              const SizedBox(height: 2),
-              Text(settings.ownerName, style: GoogleFonts.inter(
-                  fontSize: 12, color: AppColors.inkMuted),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ])),
+            Expanded(child: Text(
+              'MrWater Pro',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            )),
           ]),
         ),
 
@@ -730,60 +718,83 @@ class _Sidebar extends ConsumerWidget {
     return Container(
       width: 220,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.card,
-        border: Border(right: BorderSide(
-            color: isDark ? AppColors.separatorDark : AppColors.separator)),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: SafeArea(child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surface2Dark : AppColors.surface2,
-                borderRadius: BorderRadius.circular(12),
+      child: SafeArea(
+        child: Column(children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [primary, primary.withValues(alpha: 0.82)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: AppLogo(height: 58, onDark: isDark),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+            child: Row(children: [
+              const AppLogo(height: 58, onDark: true),
+              const SizedBox(width: 12),
+              Expanded(child: Text(
+                'MrWater Pro',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              )),
+            ]),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, thickness: 1),
+          Expanded(
+            child: Container(
+              color: Colors.white,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                children: visibleNav.map((item) {
+                  final active = tab == item.tab;
+                  return GestureDetector(
+                    onTap: () => ref.read(tabProvider.notifier).state = item.tab,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      margin: const EdgeInsets.only(bottom: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: active ? primary.withValues(alpha: 0.10) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(children: [
+                        Icon(item.icon, size: 18,
+                            color: active ? primary : AppColors.inkMuted),
+                        const SizedBox(width: 10),
+                        Text(item.label, style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                            color: active ? primary : Theme.of(context).colorScheme.onSurface)),
+                      ]),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
           ),
-        ),
-        Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
-        const SizedBox(height: 8),
-        Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 10),
-          children: visibleNav.map((item) {
-            final active = tab == item.tab;
-            return GestureDetector(
-              onTap: () => ref.read(tabProvider.notifier).state = item.tab,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                margin: const EdgeInsets.only(bottom: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                decoration: BoxDecoration(
-                  color: active ? primary.withValues(alpha: 0.10) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(children: [
-                  Icon(item.icon, size: 18,
-                      color: active ? primary : AppColors.inkMuted),
-                  const SizedBox(width: 10),
-                  Text(item.label, style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      color: active ? primary : Theme.of(context).colorScheme.onSurface)),
-                ]),
-              ),
-            );
-          }).toList(),
-        )),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: GradientButton(label: '⚡ Quick Transaction',
-              onTap: () => showMrSheet(context, title: '⚡ Quick Action',
-                  builder: (_) => _QuickSheet(isDark: isDark)),
-              height: 40),
-        ),
-      ])),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: GradientButton(label: '⚡ Quick Transaction',
+                onTap: () => showMrSheet(context, title: '⚡ Quick Action',
+                    builder: (_) => _QuickSheet(isDark: isDark)),
+                height: 40),
+          ),
+        ]),
+      ),
     );
   }
 }

@@ -354,58 +354,15 @@ class _LogoContainer extends StatelessWidget {
                 ),
               ),
             
-            // Main logo container
-            Container(
+            // Main logo — use tight logomark (MW symbol only) when small,
+            // full badge when large enough for text ring to be legible.
+            Image.asset(
+              height < 100
+                  ? 'assets/images/mrwater_logomark.png'
+                  : 'assets/images/mrwater_logo.png',
               width: height,
               height: height,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primary,
-                    primary.withValues(alpha: 0.9),
-                    primary.withValues(alpha: 0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(height * 0.25),
-                boxShadow: [
-                  BoxShadow(
-                    color: primary.withValues(alpha: 0.4),
-                    blurRadius: height * 0.25,
-                    offset: Offset(0, height * 0.08),
-                  ),
-                  BoxShadow(
-                    color: primary.withValues(alpha: 0.2),
-                    blurRadius: height * 0.5,
-                    offset: Offset(0, height * 0.16),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.water_drop_rounded,
-                  size: height * 0.5,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            
-            // Inner highlight
-            Container(
-              width: height * 0.8,
-              height: height * 0.8,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.2),
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(height * 0.2),
-              ),
+              fit: BoxFit.contain,
             ),
           ],
         ),
@@ -483,29 +440,13 @@ class MinimalAppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = color ?? Theme.of(context).colorScheme.primary;
-    
-    return Container(
+    // MinimalAppLogo is always used at small sizes — always use the tight
+    // logomark (MW symbol only) so it stays sharp and legible.
+    return Image.asset(
+      'assets/images/mrwater_logomark.png',
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            primary,
-            primary.withValues(alpha: 0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(size * 0.25),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.water_drop_rounded,
-          size: size * 0.5,
-          color: Colors.white,
-        ),
-      ),
+      fit: BoxFit.contain,
     );
   }
 }

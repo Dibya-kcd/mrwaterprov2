@@ -97,27 +97,28 @@ class AppTheme {
 
   static TextTheme _txt(Color ink, bool dark) {
     final m = dark ? AppColors.inkSoftDark : AppColors.inkMuted;
+    const fallback = ['Arial', 'sans-serif'];
     return TextTheme(
       // Display - hero numbers, large KPIs
-      displayLarge:   GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w900, color: ink, letterSpacing: -1),
-      displayMedium:  GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5),
-      displaySmall:   GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700, color: ink),
+      displayLarge:   GoogleFonts.inter(textStyle: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: ink, letterSpacing: -1, fontFamilyFallback: fallback)),
+      displayMedium:  GoogleFonts.inter(textStyle: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5, fontFamilyFallback: fallback)),
+      displaySmall:   GoogleFonts.inter(textStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: ink, fontFamilyFallback: fallback)),
       // Headlines - screen titles, section titles
-      headlineLarge:  GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5),
-      headlineMedium: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: ink),
-      headlineSmall:  GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ink),
+      headlineLarge:  GoogleFonts.inter(textStyle: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.5, fontFamilyFallback: fallback)),
+      headlineMedium: GoogleFonts.inter(textStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ink, fontFamilyFallback: fallback)),
+      headlineSmall:  GoogleFonts.inter(textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ink, fontFamilyFallback: fallback)),
       // Titles - card headers, form labels
-      titleLarge:     GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: ink),
-      titleMedium:    GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: ink),
-      titleSmall:     GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ink),
+      titleLarge:     GoogleFonts.inter(textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ink, fontFamilyFallback: fallback)),
+      titleMedium:    GoogleFonts.inter(textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ink, fontFamilyFallback: fallback)),
+      titleSmall:     GoogleFonts.inter(textStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink, fontFamilyFallback: fallback)),
       // Body - normal text, descriptions
-      bodyLarge:      GoogleFonts.inter(fontSize: 16, color: ink, height: 1.5),
-      bodyMedium:     GoogleFonts.inter(fontSize: 14, color: ink, height: 1.4),
-      bodySmall:      GoogleFonts.inter(fontSize: 12, color: m, height: 1.4),
+      bodyLarge:      GoogleFonts.inter(textStyle: TextStyle(fontSize: 16, color: ink, height: 1.5, fontFamilyFallback: fallback)),
+      bodyMedium:     GoogleFonts.inter(textStyle: TextStyle(fontSize: 14, color: ink, height: 1.4, fontFamilyFallback: fallback)),
+      bodySmall:      GoogleFonts.inter(textStyle: TextStyle(fontSize: 12, color: m, height: 1.4, fontFamilyFallback: fallback)),
       // Labels - chips, badges, pills
-      labelLarge:     GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: ink),
-      labelMedium:    GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: m),
-      labelSmall:     GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: m),
+      labelLarge:     GoogleFonts.inter(textStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink, fontFamilyFallback: fallback)),
+      labelMedium:    GoogleFonts.inter(textStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: m, fontFamilyFallback: fallback)),
+      labelSmall:     GoogleFonts.inter(textStyle: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: m, fontFamilyFallback: fallback)),
     );
   }
 }

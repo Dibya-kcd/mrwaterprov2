@@ -135,7 +135,11 @@ class FirebaseService {
   /// Write a single child key inside a node. No-op if not initialised.
   Future<void> setChild(String node, String childId, Map<String, dynamic> data) async {
     final ref = _ref(node);
-    if (ref == null) return;
+    if (ref == null) {
+      print('[FirebaseService] setChild SKIPPED (ref==null) node=$node child=$childId');
+      return;
+    }
+    print('[FirebaseService] setChild node=$node child=$childId');
     await ref.child(childId).set(data);
   }
 
@@ -158,7 +162,9 @@ class FirebaseService {
       readOnce(FirebaseConfig.nodeInventory);
 
   Future<void> writeInventory(Map<String, dynamic> data) =>
-      write(FirebaseConfig.nodeInventory, data);
+      write(FirebaseConfig.nodeInventory, data).then((_) {
+        print('[FirebaseService] writeInventory node=${FirebaseConfig.nodeInventory}');
+      });
 
   Stream<Map<String, dynamic>?> watchInventory() =>
       watch(FirebaseConfig.nodeInventory);

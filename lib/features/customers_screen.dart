@@ -20,16 +20,16 @@ class _CustScreenState extends ConsumerState<CustomersScreen> {
   @override
   Widget build(BuildContext context) {
     final custs = ref.watch(customersProvider);
+    final txns = ref.watch(transactionsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final list = custs.where((c) {
       final ms = c.name.toLowerCase().contains(_search.toLowerCase()) ||
           c.phone.contains(_search) || c.area.toLowerCase().contains(_search.toLowerCase());
+      final customerTxns = txns.where((t) => t.customerId == c.id);
       final mf = switch (_filter) {
-        'Active' => c.isActive,
-        'Jars Out' => c.hasJarsOut,
-        'Has Dues' => c.hasDues,
-        'Has Advance' => c.hasAdvance,
+        'Daily' => customerTxns.any((t) => t.deliveryType == 'daily'),
+        'Event' => customerTxns.any((t) => t.deliveryType == 'event'),
         _ => true,
       };
       return ms && mf;
@@ -95,7 +95,7 @@ class _CustScreenState extends ConsumerState<CustomersScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Row(children: ['All', 'Active', 'Jars Out', 'Has Dues', 'Has Advance'].map((f) {
+          child: Row(children: ['All', 'Daily', 'Event'].map((f) {
             final active = f == _filter;
             return GestureDetector(
               onTap: () => setState(() => _filter = f),
@@ -444,6 +444,7 @@ class _AddCustFormState extends ConsumerState<AddCustForm> {
   final _phone = TextEditingController();
   final _area = TextEditingController();
   final _addr = TextEditingController();
+  String _type = 'daily';
 
   @override
   void dispose() { _name.dispose(); _phone.dispose(); _area.dispose(); _addr.dispose(); super.dispose(); }
@@ -478,6 +479,38 @@ class _AddCustFormState extends ConsumerState<AddCustForm> {
       const FieldLabel('Area / Route'),
       TextFormField(controller: _area, decoration: const InputDecoration(hintText: 'Koregaon Park')),
       const SizedBox(height: 12),
+      const FieldLabel('Customer Type'),
+      Row(
+        children: ['daily', 'event'].map((type) {
+          final isSelected = _type == type;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: GestureDetector(
+              onTap: () => setState(() => _type = type),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? Theme.of(context).colorScheme.primary : (Theme.of(context).brightness == Brightness.dark ? AppColors.separatorDark : AppColors.separator),
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  type[0].toUpperCase() + type.substring(1),
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Theme.of(context).colorScheme.primary : AppColors.inkMuted,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+      const SizedBox(height: 12),
       const FieldLabel('Address'),
       TextFormField(controller: _addr, maxLines: 2, decoration: const InputDecoration(hintText: '12 Rose Apartments...')),
       const SizedBox(height: 24),
@@ -489,6 +522,7 @@ class _AddCustFormState extends ConsumerState<AddCustForm> {
               id: DateTime.now().millisecondsSinceEpoch.toString(),
               name: _name.text.trim(), phone: _phone.text.trim(),
               area: _area.text.trim(), address: _addr.text.trim(),
+              type: _type,
               createdAt: DateTime.now().toIso8601String(),
             ));
             Navigator.pop(context);
@@ -541,6 +575,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
 
   // Status
   late bool _isActive;
+  late String _type;
 
   // Whether jar count was changed (affects inventory)
   bool get _jarsChanged => _coolOut != widget.customer.coolOut || _petOut != widget.customer.petOut;
@@ -561,6 +596,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
     _ownCool = c.ownCoolJars;
     _ownPet = c.ownPetJars;
     _isActive = c.isActive;
+    _type = c.type;
 
     // Determine balance type
     if (c.balance > 0) {
@@ -626,6 +662,7 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
       address: _addr.text.trim(),
       notes: _notes.text.trim(),
       isActive: _isActive,
+      type: _type,
       balance: _finalBalance,
       coolOut: _coolOut,
       petOut: _petOut,
@@ -691,6 +728,38 @@ class _EditCustFormState extends ConsumerState<EditCustForm> {
         const FieldLabel('Address'),
         TextFormField(controller: _addr, maxLines: 2,
             decoration: const InputDecoration(hintText: '12 Rose Apartments...')),
+        const SizedBox(height: 12),
+        const FieldLabel('Customer Type'),
+        Row(
+          children: ['daily', 'event'].map((type) {
+            final isSelected = _type == type;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: GestureDetector(
+                onTap: () => setState(() => _type = type),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? Theme.of(context).colorScheme.primary : (isDark ? AppColors.separatorDark : AppColors.separator),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    type[0].toUpperCase() + type.substring(1),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Theme.of(context).colorScheme.primary : AppColors.inkMuted,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
 
         // ── Active Status ──────────────────────────────────────────────────
         const SizedBox(height: 16),

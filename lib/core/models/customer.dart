@@ -44,6 +44,7 @@ bool _asBool(dynamic value, {bool fallback = false}) {
 class Customer {
   final String id, name, phone, area, address, createdAt;
   final bool isActive;
+  final String type; // 'daily' or 'event'
 
   /// Ledger balance.
   /// Negative = customer owes you (dues).  Positive = customer has credit.
@@ -71,6 +72,7 @@ class Customer {
     this.area = '',
     this.address = '',
     this.isActive = true,
+    this.type = 'daily', // default to daily
     this.balance = 0,
     this.coolOut = 0,
     this.petOut = 0,
@@ -109,6 +111,7 @@ class Customer {
         'area': area,
         'address': address,
         'isActive': isActive,
+        'type': type,
         'balance': balance,
         'coolOut': coolOut,
         'petOut': petOut,
@@ -128,6 +131,7 @@ class Customer {
         area: _asString(j['area']),
         address: _asString(j['address']),
         isActive: _asBool(j['isActive'], fallback: true),
+        type: _asString(j['type'], fallback: 'daily'),
         balance: _asDouble(j['balance']),
         coolOut: _asInt(j['coolOut']),
         petOut: _asInt(j['petOut']),
@@ -156,6 +160,7 @@ class Customer {
     String? area,
     String? address,
     bool? isActive,
+    String? type,
     double? balance,
     int? coolOut,
     int? petOut,
@@ -174,6 +179,7 @@ class Customer {
         area: area ?? this.area,
         address: address ?? this.address,
         isActive: isActive ?? this.isActive,
+        type: type ?? this.type,
         balance: balance ?? this.balance,
         coolOut: coolOut ?? this.coolOut,
         petOut: petOut ?? this.petOut,

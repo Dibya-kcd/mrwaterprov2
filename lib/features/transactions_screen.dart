@@ -22,7 +22,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 // Preset quick-pick options
-enum _DatePreset { today, yesterday, last7, thisMonth, last30, custom }
+enum _DatePreset { today, yesterday, last7, thisMonth, thisYear, custom }
 
 class _TxnScreenState extends ConsumerState<TransactionsScreen> {
   String _filter = 'All';
@@ -83,8 +83,8 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
         case _DatePreset.thisMonth:
           _from = DateTime(now.year, now.month, 1);
           _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
-        case _DatePreset.last30:
-          _from = today.subtract(const Duration(days: 29));
+        case _DatePreset.thisYear:
+          _from = DateTime(now.year, 1, 1);
           _to   = DateTime(now.year, now.month, now.day, 23, 59, 59);
         case _DatePreset.custom:
           break; // handled separately via bottom sheet
@@ -102,6 +102,8 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
     DateTime tmpTo   = _to;
     String tmpFilter = _filter;
 
+    final allTx = ref.read(transactionsProvider);
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -109,6 +111,21 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(builder: (ctx, setModal) {
+        int calculateResultCount() {
+          return allTx.where((t) {
+            if (t.customerId == 'EXPENSE') return false;
+            DateTime? txDate;
+            try { txDate = DateTime.parse(t.date); } catch (_) {}
+            final inRange = txDate != null && !txDate.isBefore(tmpFrom) && !txDate.isAfter(tmpTo);
+            if (!inRange) return false;
+            final isEvent = t.deliveryType == 'event';
+            return switch (tmpFilter) {
+              'Daily' => !isEvent,
+              'Event' => isEvent,
+              _ => true,
+            };
+          }).length;
+        }
 
         Widget presetChip(String label, _DatePreset p) {
           final active = tmpPreset == p;
@@ -132,8 +149,8 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                   case _DatePreset.thisMonth:
                     tmpFrom = DateTime(now.year, now.month, 1);
                     tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
-                  case _DatePreset.last30:
-                    tmpFrom = today.subtract(const Duration(days: 29));
+                  case _DatePreset.thisYear:
+                    tmpFrom = DateTime(now.year, 1, 1);
                     tmpTo   = DateTime(now.year, now.month, now.day, 23, 59, 59);
                   case _DatePreset.custom:
                     break;
@@ -228,32 +245,27 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
               presetChip('Yesterday', _DatePreset.yesterday),
               presetChip('This Week', _DatePreset.last7),
               presetChip('This Month',_DatePreset.thisMonth),
-              presetChip('Last 30d',  _DatePreset.last30),
+              presetChip('This Year', _DatePreset.thisYear),
               // Custom chip
               GestureDetector(
                 onTap: () async {
-                  DateTime t1 = tmpFrom, t2 = tmpTo;
-                  // show two date pickers inline
-                  final d1 = await showDatePicker(
-                    context: ctx, initialDate: tmpFrom,
+                  final range = await showDateRangePicker(
+                    context: ctx,
                     firstDate: DateTime(2020),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
-                    builder: (c, ch) => Theme(data: Theme.of(c), child: ch!),
+                    initialDateRange: DateTimeRange(start: tmpFrom, end: tmpTo),
+                    builder: (c, ch) => Theme(
+                      data: Theme.of(c).copyWith(colorScheme: Theme.of(c).colorScheme.copyWith(primary: primary)),
+                      child: ch!,
+                    ),
                   );
-                  if (d1 != null) t1 = d1;
-                  if (!ctx.mounted) return; // ignore: use_build_context_synchronously
-                  final d2 = await showDatePicker(
-                    context: ctx, initialDate: tmpTo,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                    builder: (c, ch) => Theme(data: Theme.of(c), child: ch!),
-                  );
-                  if (d2 != null) t2 = DateTime(d2.year, d2.month, d2.day, 23, 59, 59);
-                  setModal(() {
-                    tmpPreset = _DatePreset.custom;
-                    tmpFrom = t1.isBefore(t2) ? t1 : t2;
-                    tmpTo   = t1.isBefore(t2) ? t2 : t1;
-                  });
+                  if (range != null) {
+                    setModal(() {
+                      tmpPreset = _DatePreset.custom;
+                      tmpFrom = range.start;
+                      tmpTo   = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59);
+                    });
+                  }
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 120),
@@ -317,8 +329,23 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                   });
                   Navigator.pop(ctx);
                 },
-                child: Text('Apply Filters',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Apply Filters',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('${calculateResultCount()}',
+                          style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w700, fontSize: 13)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ]),
@@ -383,6 +410,27 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
     final primary = Theme.of(context).colorScheme.primary;
     final list    = _buildList(all);
 
+    // Calculate data-driven suggestions
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+
+    int unpaidThisWeek = 0;
+    int deliveriesToday = 0;
+    for (final t in all) {
+      if (t.customerId == 'EXPENSE') continue;
+      try {
+        final txDate = DateTime.parse(t.date);
+        if (txDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+            txDate.isBefore(today.add(const Duration(days: 1)))) {
+          if (t.billedAmount > t.amountCollected) unpaidThisWeek++;
+        }
+        if (txDate.year == today.year && txDate.month == today.month && txDate.day == today.day) {
+          if (t.coolDelivered > 0 || t.petDelivered > 0) deliveriesToday++;
+        }
+      } catch (_) {}
+    }
+
     // Count active filters for badge on filter icon
     final bool hasDateFilter = _preset != _DatePreset.today;
     final bool hasCatFilter  = _filter != 'All';
@@ -394,7 +442,7 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
       _DatePreset.yesterday => 'Yesterday',
       _DatePreset.last7     => 'This Week',
       _DatePreset.thisMonth => 'This Month',
-      _DatePreset.last30    => 'Last 30d',
+      _DatePreset.thisYear  => 'This Year',
       _DatePreset.custom    => '${_fmtDate(_from)}–${_fmtDate(_to)}',
     };
 
@@ -428,6 +476,76 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
                           fontWeight: FontWeight.w700, color: primary)),
                 ),
             ]),
+            const SizedBox(height: 10),
+
+            // ── Smart Suggestion Chips ───────────────────────────────────
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.zero,
+              child: Row(
+                children: [
+                  if (unpaidThisWeek > 0)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _preset = _DatePreset.last7;
+                          _search = '';
+                          _searchCtrl.clear();
+                          _filter = 'All';
+                          _from = weekStart;
+                          _to = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerColor(isDark).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.dangerColor(isDark).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.warning_rounded, size: 16, color: AppColors.danger),
+                          const SizedBox(width: 6),
+                          Text('$unpaidThisWeek Unpaid This Week',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                        ]),
+                      ),
+                    ),
+                  if (deliveriesToday > 10)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _preset = _DatePreset.today;
+                          _search = '';
+                          _searchCtrl.clear();
+                          _filter = 'All';
+                          final today = DateTime(now.year, now.month, now.day);
+                          _from = today;
+                          _to = DateTime(today.year, today.month, today.day, 23, 59, 59);
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: primary.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.trending_up_rounded, size: 16),
+                          const SizedBox(width: 6),
+                          Text('$deliveriesToday Deliveries Today',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12, fontWeight: FontWeight.w600, color: primary)),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
             const SizedBox(height: 10),
 
             // ── Search + Filter icon (single line) ───────────────────────
@@ -2588,6 +2706,14 @@ class _EventFormState extends ConsumerState<EventForm> {
   double get _billed    => (_cd * _effectiveCoolPrice) + (_pd * _effectivePetPrice) + _transport;
   bool   get _hasAny    => _cd > 0 || _pd > 0;
 
+  // ── Editing a single day that belongs to an existing multi-day event ───────
+  // _isMultiDay gets forced to true (see initState) for ANY day of a multi-day
+  // event, even though we're only editing one day's record. The single-day
+  // form (jar table / amount / note / save button) must still show in that
+  // case — otherwise the screen renders nothing but the customer picker.
+  bool get _isEditingMultiDayChild => widget.existing != null && widget.existing!.isMultiDayEvent;
+  bool get _showSingleDayForm => !_isMultiDay || widget.existing != null;
+
   void _onCustSelected(Customer c) => setState(() {
     _cust = c;
     _coolOverrideCtrl.text = c.coolPriceOverride?.toStringAsFixed(0) ?? '';
@@ -2635,6 +2761,12 @@ class _EventFormState extends ConsumerState<EventForm> {
       updatedAt: widget.existing != null ? now : null,
       createdBy: 'Admin', deliveryType: 'event',
       eventName: _eventNameCtrl.text.trim(), eventStatus: _eventStatus,
+      // Preserve event-group linkage when editing one day of a multi-day
+      // event — without this the day silently detaches from its group.
+      eventId: widget.existing?.eventId,
+      eventStartDate: widget.existing?.eventStartDate,
+      eventEndDate: widget.existing?.eventEndDate,
+      eventDay: widget.existing?.eventDay,
     );
     widget.existing != null
         ? await ref.read(transactionsProvider.notifier).edit(widget.existing!, tx)
@@ -2691,10 +2823,11 @@ class _EventFormState extends ConsumerState<EventForm> {
       );
       await ref.read(transactionsProvider.notifier).add(tx);
     }
-    final nav = Navigator.of(context);
     final savedCount = _dayEntries.length;
     if (context.mounted) {
-      nav.pop();
+      // ignore: use_build_context_synchronously
+      Navigator.of(context).pop();
+      // ignore: use_build_context_synchronously
       showToast(context, '✅ $savedCount-day event saved', success: true);
     }
   }
@@ -2712,16 +2845,25 @@ class _EventFormState extends ConsumerState<EventForm> {
 
     return Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-      // ── Date Selector (single-day only) ────────────────────────────────────
-      if (!_isMultiDay)
+      // ── Date Selector (single-day, and single-day-within-event edits) ──────
+      if (_showSingleDayForm)
         Center(
           child: GestureDetector(
             onTap: () async {
+              // When editing one day of a multi-day event, keep the date
+              // inside that event's range so the record can't drift out of
+              // its own group.
+              final firstDate = _isEditingMultiDayChild && _eventStart != null
+                  ? _eventStart!
+                  : DateTime(DateTime.now().year - 2);
+              final lastDate = _isEditingMultiDayChild && _eventEnd != null
+                  ? _eventEnd!
+                  : DateTime.now().add(const Duration(days: 365));
               final picked = await showDatePicker(
                 context: context,
                 initialDate: _txDate,
-                firstDate: DateTime(DateTime.now().year - 2),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
+                firstDate: firstDate,
+                lastDate: lastDate,
               );
               if (picked != null) setState(() => _txDate = picked);
             },
@@ -2745,7 +2887,7 @@ class _EventFormState extends ConsumerState<EventForm> {
             ),
           ),
         ),
-      if (!_isMultiDay) const SizedBox(height: 20),
+      if (_showSingleDayForm) const SizedBox(height: 20),
 
       // ── Voice fill button ───────────────────────────────────────────────────
       if (widget.existing == null && !_isMultiDay)
@@ -2773,7 +2915,7 @@ class _EventFormState extends ConsumerState<EventForm> {
 
       // ── Event Details (name + transport) ────────────────────────────────────
       _EventDetailsSection(nameCtrl: _eventNameCtrl, transportCtrl: _transportCtrl,
-        eventDate: _isMultiDay ? null : _txDate, isDark: isDark,
+        eventDate: _showSingleDayForm ? _txDate : null, isDark: isDark,
         onDatePicked: (d) => setState(() => _txDate = d ?? _txDate),
         onTransportChanged: (_) => setState(() {})),
       const SizedBox(height: 16),
@@ -2816,7 +2958,7 @@ class _EventFormState extends ConsumerState<EventForm> {
       const SizedBox(height: 20),
 
       // ── Single-day jar table ────────────────────────────────────────────────
-      if (!_isMultiDay) ...[
+      if (_showSingleDayForm) ...[
         const FieldLabel('Jars — Event Delivery'),
         Container(
           decoration: BoxDecoration(
@@ -2907,8 +3049,8 @@ class _EventFormState extends ConsumerState<EventForm> {
         ),
       ],
 
-      // ── Multi-day jar table + summary ───────────────────────────────────────
-      if (_isMultiDay && _dayEntries.isNotEmpty) ...[
+      // ── Multi-day jar table + summary (new events only) ─────────────────────
+      if (_isMultiDay && widget.existing == null && _dayEntries.isNotEmpty) ...[
         _MultiDayJarTable(
           entries: _dayEntries,
           coolPrice: _effectiveCoolPrice,
@@ -2968,8 +3110,8 @@ class _EventFormState extends ConsumerState<EventForm> {
         ),
       ],
 
-      // Prompt when multi-day toggled but no range yet
-      if (_isMultiDay && _dayEntries.isEmpty && _eventStart == null)
+      // Prompt when multi-day toggled but no range yet (new events only)
+      if (_isMultiDay && widget.existing == null && _dayEntries.isEmpty && _eventStart == null)
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Container(
@@ -3340,6 +3482,10 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
 
   DateTime _txDate = DateTime.now();
 
+  // ── Damage price override — defaults to the global setting, but can be
+  // edited per return (e.g. a cracked lid costs less than a shattered jar).
+  double? _dmgPriceOverride;
+
   @override
   void initState() {
     super.initState();
@@ -3350,6 +3496,13 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
       _noteCtrl.text  = e.note;
       _returnContext  = e.deliveryType == 'event' ? 'event' : 'daily';
       try { _txDate = DateTime.parse(e.date); } catch (_) { _txDate = DateTime.now(); }
+      // Back out the per-jar price that was actually used, so editing an
+      // existing return shows the price it was saved with, not today's
+      // global default.
+      final dmgCount = e.coolDamaged + e.petDamaged;
+      if (dmgCount > 0 && e.damageCharge > 0) {
+        _dmgPriceOverride = e.damageCharge / dmgCount;
+      }
     } else {
       final pre = ref.read(selectedCustomerForTxnProvider);
       if (pre != null) {
@@ -3372,7 +3525,8 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
   void dispose() { _noteCtrl.dispose(); super.dispose(); }
 
   AppSettings get _s  => ref.read(settingsProvider);
-  double get _dmgCharge => (_cdmg + _pdmg) * _s.damageChargePerJar;
+  double get _effectiveDmgPrice => _dmgPriceOverride ?? _s.damageChargePerJar;
+  double get _dmgCharge => (_cdmg + _pdmg) * _effectiveDmgPrice;
   bool   get _hasAny    => _cr > 0 || _pr > 0;
 
   Future<void> _save() async {
@@ -3409,8 +3563,11 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
   @override
   Widget build(BuildContext context) {
     final isDark  = Theme.of(context).brightness == Brightness.dark;
-    final custs   = ref.watch(customersProvider).where((c) => c.isActive).toList();
-    final s       = ref.watch(settingsProvider);
+    // Only customers who currently have jars out are eligible for a return.
+    // When editing an existing return, keep that customer in the list even
+    // if their jars-out count has since dropped to 0 (e.g. fully returned).
+    final custs   = ref.watch(customersProvider).where((c) =>
+        c.isActive && (c.coolOut > 0 || c.petOut > 0 || c.id == _cust?.id)).toList();
     final coolC   = AppColors.coolColor(isDark);
     final petC    = AppColors.petColor(isDark);
     final okC     = AppColors.successColor(isDark);
@@ -3506,6 +3663,8 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
       // ── Customer picker ──────────────────────────────────────────────────
       const FieldLabel('Customer *'),
       _CustPicker(selected: _cust, customers: custs,
+          allowAddNew: false,
+          emptyMessage: 'No customers currently have jars out',
           onSelect: (c) => setState(() => _cust = c)),
       const SizedBox(height: 20),
 
@@ -3556,7 +3715,9 @@ class _ReturnJarFormState extends ConsumerState<ReturnJarForm> {
         coolColor: coolC, petColor: petC, isDark: isDark,
         onCoolChanged: (v) => setState(() => _cdmg = v),
         onPetChanged:  (v) => setState(() => _pdmg = v),
-        damagePerJar: s.damageChargePerJar),
+        damagePerJar: _effectiveDmgPrice,
+        priceEditable: true,
+        onPriceChanged: (v) => setState(() => _dmgPriceOverride = v)),
 
       const SizedBox(height: 16),
       const FieldLabel('Note (optional)'),
@@ -3739,7 +3900,15 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
   @override
   Widget build(BuildContext context) {
     final isDark  = Theme.of(context).brightness == Brightness.dark;
-    final custs   = ref.watch(customersProvider).where((c) => c.isActive).toList();
+    // Record Payment settles an existing due, so only show customers who
+    // actually owe something — except for "Advance", which is a prepayment
+    // and doesn't require an existing due. Always keep the currently
+    // selected/edited customer in the list even if their due has since
+    // been cleared.
+    final allCusts = ref.watch(customersProvider).where((c) => c.isActive).toList();
+    final custs    = _payType == 'advance'
+        ? allCusts
+        : allCusts.where((c) => c.hasDues || c.id == _cust?.id).toList();
     final primary = Theme.of(context).colorScheme.primary;
     final okC     = AppColors.successColor(isDark);
     final dangerC = AppColors.dangerColor(isDark);
@@ -3840,7 +4009,12 @@ class _PaymentFormState extends ConsumerState<PaymentForm> {
 
       // ── Customer picker ──────────────────────────────────────────────────
       const FieldLabel('Customer *'),
-      _CustPicker(selected: _cust, customers: custs, onSelect: _onCustSelected),
+      _CustPicker(selected: _cust, customers: custs,
+          allowAddNew: false,
+          emptyMessage: isAdvance
+              ? 'No active customers yet'
+              : 'No customers currently have dues pending',
+          onSelect: _onCustSelected),
 
       // Balance info chip
       if (_cust != null) ...[
@@ -4431,10 +4605,17 @@ class _DamagedSection extends StatefulWidget {
   final bool isDark;
   final ValueChanged<int> onCoolChanged, onPetChanged;
   final double damagePerJar;
+  /// When true, shows a pencil icon next to the per-jar charge that lets the
+  /// user override it for this transaction only (doesn't touch the global
+  /// setting). Used on the Return Jar screen where the charge can vary
+  /// per incident (e.g. a cracked lid vs a fully broken jar).
+  final bool priceEditable;
+  final ValueChanged<double>? onPriceChanged;
   const _DamagedSection({required this.coolReturned, required this.petReturned,
       required this.coolDmg, required this.petDmg,
       required this.coolColor, required this.petColor, required this.isDark,
-      required this.onCoolChanged, required this.onPetChanged, required this.damagePerJar});
+      required this.onCoolChanged, required this.onPetChanged, required this.damagePerJar,
+      this.priceEditable = false, this.onPriceChanged});
 
   @override
   State<_DamagedSection> createState() => _DamagedSectionState();
@@ -4442,6 +4623,32 @@ class _DamagedSection extends StatefulWidget {
 
 class _DamagedSectionState extends State<_DamagedSection> {
   bool _open = false;
+  bool _editingPrice = false;
+  late final TextEditingController _priceCtrl =
+      TextEditingController(text: widget.damagePerJar.toInt().toString());
+
+  @override
+  void didUpdateWidget(covariant _DamagedSection old) {
+    super.didUpdateWidget(old);
+    // Keep the field in sync if the price changes from outside (e.g. when
+    // an existing return with a saved override first loads).
+    if (!_editingPrice && old.damagePerJar != widget.damagePerJar) {
+      _priceCtrl.text = widget.damagePerJar.toInt().toString();
+    }
+  }
+
+  @override
+  void dispose() { _priceCtrl.dispose(); super.dispose(); }
+
+  void _commitPrice() {
+    final v = double.tryParse(_priceCtrl.text);
+    if (v != null && v > 0) {
+      widget.onPriceChanged?.call(v);
+    } else {
+      _priceCtrl.text = widget.damagePerJar.toInt().toString();
+    }
+    setState(() => _editingPrice = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -4457,8 +4664,44 @@ class _DamagedSectionState extends State<_DamagedSection> {
           dense: true,
           leading: Icon(Icons.warning_amber_rounded, color: dangerC, size: 18),
           title: Text('Damaged jars?', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: dangerC)),
-          subtitle: Text('₹${widget.damagePerJar.toInt()} per jar charge',
-              style: GoogleFonts.inter(fontSize: 11, color: dangerC.withValues(alpha: 0.7))),
+          subtitle: widget.priceEditable && _editingPrice
+                  ? SizedBox(
+                  height: 30, width: 110,
+                  child: TextField(
+                    controller: _priceCtrl,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: dangerC),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixText: '₹ ',
+                      prefixStyle: GoogleFonts.inter(fontSize: 11, color: dangerC.withValues(alpha: 0.7)),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                      suffixIcon: GestureDetector(
+                          onTap: _commitPrice,
+                          child: Icon(Icons.check_rounded, size: 16, color: dangerC)),
+                    ),
+                    onSubmitted: (_) => _commitPrice(),
+                    onChanged: (s) {
+                      final v = double.tryParse(s);
+                      if (v != null && v > 0) {
+                        widget.onPriceChanged?.call(v);
+                      }
+                    },
+                  ),
+                )
+              : Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('₹${widget.damagePerJar.toInt()} per jar charge',
+                      style: GoogleFonts.inter(fontSize: 11, color: dangerC.withValues(alpha: 0.7))),
+                  if (widget.priceEditable) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => setState(() => _editingPrice = true),
+                      child: Icon(Icons.edit_rounded, size: 12, color: dangerC.withValues(alpha: 0.7)),
+                    ),
+                  ],
+                ]),
           trailing: Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: dangerC),
           onTap: () => setState(() => _open = !_open),
         ),
@@ -4617,7 +4860,16 @@ class _CustPicker extends StatelessWidget {
   final Customer? selected;
   final List<Customer> customers;
   final ValueChanged<Customer> onSelect;
-  const _CustPicker({required this.selected, required this.customers, required this.onSelect});
+  /// When false, hides the "add new customer" affordance in the picker sheet.
+  /// Used for flows like Return Jar / Record Payment where the customer must
+  /// already exist (and already have jars out / dues pending) — creating a
+  /// brand-new customer there wouldn't make sense.
+  final bool allowAddNew;
+  /// Optional message shown instead of the picker's default empty state,
+  /// e.g. "No customers with jars pending return".
+  final String? emptyMessage;
+  const _CustPicker({required this.selected, required this.customers, required this.onSelect,
+      this.allowAddNew = true, this.emptyMessage});
 
   @override
   Widget build(BuildContext context) {
@@ -4664,6 +4916,8 @@ class _CustPicker extends StatelessWidget {
       builder: (sheetCtx) => _CustPickerSheet(
         customers: customers,
         onSelect: (c) => Navigator.pop(sheetCtx, c),
+        allowAddNew: allowAddNew,
+        emptyMessage: emptyMessage,
       ),
     );
     if (result != null) onSelect(result);
@@ -4675,7 +4929,10 @@ class _CustPicker extends StatelessWidget {
 class _CustPickerSheet extends ConsumerStatefulWidget {
   final List<Customer> customers;
   final ValueChanged<Customer> onSelect;
-  const _CustPickerSheet({required this.customers, required this.onSelect});
+  final bool allowAddNew;
+  final String? emptyMessage;
+  const _CustPickerSheet({required this.customers, required this.onSelect,
+      this.allowAddNew = true, this.emptyMessage});
 
   @override
   ConsumerState<_CustPickerSheet> createState() => _CustPickerSheetState();
@@ -4746,6 +5003,8 @@ class _CustPickerSheetState extends ConsumerState<_CustPickerSheet> {
           child: filtered.isEmpty
               ? _NoCustomerFound(
                   search: _search,
+                  allowAdd: widget.allowAddNew,
+                  emptyMessage: widget.emptyMessage,
                   onAdd: () async {
                     // Close picker, open add customer form
                     Navigator.pop(context);
@@ -4798,7 +5057,10 @@ class _CustPickerSheetState extends ConsumerState<_CustPickerSheet> {
 class _NoCustomerFound extends StatelessWidget {
   final String search;
   final VoidCallback onAdd;
-  const _NoCustomerFound({required this.search, required this.onAdd});
+  final bool allowAdd;
+  final String? emptyMessage;
+  const _NoCustomerFound({required this.search, required this.onAdd,
+      this.allowAdd = true, this.emptyMessage});
 
   @override
   Widget build(BuildContext context) {
@@ -4808,16 +5070,20 @@ class _NoCustomerFound extends StatelessWidget {
         const Icon(Icons.person_search_rounded, size: 48, color: AppColors.inkMuted),
         const SizedBox(height: 12),
         Text(
-          search.isNotEmpty ? 'No customer found for "$search"' : 'No customers yet',
+          search.isNotEmpty
+              ? 'No customer found for "$search"'
+              : (emptyMessage ?? 'No customers yet'),
           style: GoogleFonts.inter(fontSize: 14, color: AppColors.inkMuted),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 20),
-        GradientButton(
-          label: '+ Add ${search.isNotEmpty ? '"$search"' : 'New Customer'}',
-          onTap: onAdd,
-          height: 46,
-        ),
+        if (allowAdd) ...[
+          const SizedBox(height: 20),
+          GradientButton(
+            label: '+ Add ${search.isNotEmpty ? '"$search"' : 'New Customer'}',
+            onTap: onAdd,
+            height: 46,
+          ),
+        ],
       ]),
     );
   }

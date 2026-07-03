@@ -1,6 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'file_downloader.dart';
 import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
@@ -195,7 +197,6 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
   DateTime _to     = DateTime.now();
 
   // ── Customer ────────────────────────────────────────────────────────────────
-  String  _custSearch = '';
   String? _customerId;          // null = All Customers
 
   // ── Other filters ───────────────────────────────────────────────────────────
@@ -206,7 +207,7 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
   bool _generating = false;
   bool _generated  = false;
 
-  static const _presets = ['Today', 'This Week', 'This Month', 'Custom'];
+  static const _presets = ['Today', 'Yesterday', 'This Week', 'This Month', 'This Year', 'Custom'];
 
   Color get _c => widget.def.color(Theme.of(context).brightness == Brightness.dark);
 
@@ -219,11 +220,17 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
       switch (p) {
         case 'Today':
           _from = today; _to = today; break;
+        case 'Yesterday':
+          final y = today.subtract(const Duration(days: 1));
+          _from = y; _to = y; break;
         case 'This Week':
           _from = today.subtract(Duration(days: today.weekday - 1));
           _to   = today; break;
         case 'This Month':
           _from = DateTime(now.year, now.month, 1);
+          _to   = today; break;
+        case 'This Year':
+          _from = DateTime(now.year, 1, 1);
           _to   = today; break;
         case 'Custom':
           break; // keep current range, user will pick
@@ -237,6 +244,174 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
     _applyPreset('Today');
   }
 
+  String get _filterSummary {
+    if (_preset == 'Custom') {
+      return '${DateFormat('d MMM').format(_from)} – ${DateFormat('d MMM').format(_to)}';
+    }
+    if (_preset == 'Today') {
+      return 'Today';
+    }
+    return _preset;
+  }
+
+  Future<void> _openDateFilterSheet(BuildContext context, Color c) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String tmpPreset = _preset;
+    DateTime tmpFrom = _from;
+    DateTime tmpTo = _to;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setModal) {
+        void applyPreset(String p) {
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          setModal(() {
+            tmpPreset = p;
+            switch (p) {
+              case 'Today':
+                tmpFrom = today;
+                tmpTo = today;
+              case 'Yesterday':
+                final y = today.subtract(const Duration(days: 1));
+                tmpFrom = y;
+                tmpTo = y;
+              case 'This Week':
+                tmpFrom = today.subtract(Duration(days: today.weekday - 1));
+                tmpTo = today;
+              case 'This Month':
+                tmpFrom = DateTime(now.year, now.month, 1);
+                tmpTo = today;
+              case 'This Year':
+                tmpFrom = DateTime(now.year, 1, 1);
+                tmpTo = today;
+              case 'Custom':
+                break;
+            }
+          });
+        }
+
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(
+              color: isDark ? AppColors.separatorDark : AppColors.separator,
+              borderRadius: BorderRadius.circular(2),
+            ))),
+            const SizedBox(height: 12),
+            Row(children: [
+              Text('Filter Range', style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => applyPreset('Today'),
+                child: Text('Reset', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: c)),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: _presets.map((p) {
+              final active = tmpPreset == p;
+              return GestureDetector(
+                onTap: () => applyPreset(p),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: active ? c.withValues(alpha: 0.12) : (isDark ? AppColors.surface2Dark : AppColors.surface2),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: active ? c : (isDark ? AppColors.separatorDark : AppColors.separator)),
+                  ),
+                  child: Text(p, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: active ? c : AppColors.inkMuted)),
+                ),
+              );
+            }).toList()),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface2Dark : AppColors.surface2,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+              ),
+              child: Row(children: [
+                Icon(Icons.calendar_today_rounded, size: 16, color: c),
+                const SizedBox(width: 8),
+                Expanded(child: Text(
+                  '${DateFormat('d MMM yyyy').format(tmpFrom)}  →  ${DateFormat('d MMM yyyy').format(tmpTo)}',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                )),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final range = await showDateRangePicker(
+                    context: ctx,
+                    firstDate: DateTime(DateTime.now().year - 3),
+                    lastDate: DateTime.now(),
+                    initialDateRange: DateTimeRange(start: tmpFrom, end: tmpTo),
+                    builder: (pickerCtx, child) => Theme(
+                      data: Theme.of(pickerCtx).copyWith(colorScheme: Theme.of(pickerCtx).colorScheme.copyWith(primary: c)),
+                      child: child!,
+                    ),
+                  );
+                  if (range != null) {
+                    setModal(() {
+                      tmpPreset = 'Custom';
+                      tmpFrom = range.start;
+                      tmpTo = range.end;
+                    });
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: c,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Choose Custom Range', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _preset = tmpPreset;
+                    _from = tmpFrom;
+                    _to = tmpTo;
+                    _generated = false;
+                  });
+                  Navigator.of(ctx).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor(isDark),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Apply', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ]),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -247,21 +422,19 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
       return _InvoiceFilterScreen(def: widget.def, onBack: widget.onBack);
     }
 
-    // ── Customer data ────────────────────────────────────────────────────────
+    // ── Customer data is no longer surfaced in this screen; defaults remain All Customers.
     final allCusts = ref.watch(customersProvider)
         .where((cu) => cu.isActive).toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
-    final filteredCusts = _custSearch.isEmpty
-        ? allCusts
-        : allCusts.where((cu) =>
-            cu.name.toLowerCase().contains(_custSearch.toLowerCase()) ||
-            cu.phone.contains(_custSearch)).toList();
-
-    Customer? selCust;
     if (_customerId != null) {
-      try { selCust = allCusts.firstWhere((cu) => cu.id == _customerId); }
-      catch (_) { _customerId = null; }
+      try {
+        if (!allCusts.any((cu) => cu.id == _customerId)) {
+          _customerId = null;
+        }
+      } catch (_) {
+        _customerId = null;
+      }
     }
 
     // Last txn date per customer
@@ -273,8 +446,6 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         lastTxnDate[t.customerId] = t.date;
       }
     }
-
-    final needsCustomer = !['stock','expense','pnl','outstanding'].contains(widget.def.id);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -309,6 +480,25 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
               fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
               child: Text(widget.def.title, style: GoogleFonts.inter(
                   fontSize: 17, fontWeight: FontWeight.w700, color: c)))),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _openDateFilterSheet(context, c),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surface2Dark : AppColors.surface2,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                      color: isDark ? AppColors.separatorDark : AppColors.separator),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.filter_list_rounded, size: 15, color: c),
+                  const SizedBox(width: 6),
+                  Text(_filterSummary, style: GoogleFonts.inter(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: c)),
+                ]),
+              ),
+            ),
           ]),
         ),
 
@@ -317,276 +507,7 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-            // ══════════════════════════════════════════════════════════════════
-            // 1. DATE RANGE — quick presets + compact row
-            // ══════════════════════════════════════════════════════════════════
-            _IFSection(label: '📅 Date Range', isDark: isDark, child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-                // Quick preset row
-                Row(children: _presets.map((p) {
-                  final active = _preset == p;
-                  return Expanded(child: Padding(
-                    padding: EdgeInsets.only(right: p != _presets.last ? 6 : 0),
-                    child: GestureDetector(
-                      onTap: () => _applyPreset(p),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        padding: const EdgeInsets.symmetric(vertical: 9),
-                        decoration: BoxDecoration(
-                          color: active
-                              ? c.withValues(alpha: 0.12)
-                              : (isDark ? AppColors.surface2Dark : AppColors.surface2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: active ? c
-                                  : (isDark ? AppColors.separatorDark : AppColors.separator),
-                              width: active ? 1.5 : 1),
-                        ),
-                        child: Center(child: Text(p,
-                            style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                                color: active ? c : AppColors.inkMuted))),
-                      ),
-                    ),
-                  ));
-                }).toList()),
-
-                const SizedBox(height: 10),
-
-                // Compact date display / Custom picker trigger
-                GestureDetector(
-                  onTap: _preset == 'Custom'
-                      ? () => _pickCustomRange(context, c) : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surface2Dark : AppColors.surface2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: _preset == 'Custom'
-                              ? c.withValues(alpha: 0.50)
-                              : (isDark ? AppColors.separatorDark : AppColors.separator)),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.calendar_today_rounded, size: 14, color: c),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${DateFormat('d MMM yyyy').format(_from)}'
-                        '  →  '
-                        '${DateFormat('d MMM yyyy').format(_to)}',
-                        style: GoogleFonts.inter(
-                            fontSize: 13, fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : Colors.black87),
-                      ),
-                      if (_preset == 'Custom') ...[
-                        const Spacer(),
-                        Text('Change', style: GoogleFonts.inter(
-                            fontSize: 12, fontWeight: FontWeight.w700, color: c)),
-                      ],
-                    ]),
-                  ),
-                ),
-              ]),
-            ),
-
-            const SizedBox(height: 12),
-
-            // ══════════════════════════════════════════════════════════════════
-            // 2. CUSTOMER — inline search (for applicable reports)
-            // ══════════════════════════════════════════════════════════════════
-            if (needsCustomer) ...[
-              _IFSection(label: '👤 Customer', isDark: isDark, child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-                  // Selected chip
-                  if (selCust != null) ...[
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _customerId = null; _custSearch = ''; _generated = false;
-                      }),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: c.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: c.withValues(alpha: 0.30)),
-                        ),
-                        child: Row(children: [
-                          CustomerAvatar(initials: selCust.initials, size: 32),
-                          const SizedBox(width: 10),
-                          Expanded(child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Text(selCust.name, style: GoogleFonts.inter(
-                                fontSize: 13, fontWeight: FontWeight.w700)),
-                            Text(selCust.phone, style: GoogleFonts.inter(
-                                fontSize: 11, color: AppColors.inkMuted)),
-                          ])),
-                          Icon(Icons.check_circle_rounded, size: 16, color: c),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.close_rounded, size: 15,
-                              color: AppColors.inkMuted),
-                        ]),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _customerId = null; _custSearch = ''; _generated = false;
-                      }),
-                      child: Text('Change customer', style: GoogleFonts.inter(
-                          fontSize: 12, color: c, fontWeight: FontWeight.w600)),
-                    ),
-                  ] else ...[
-
-                    // "All Customers" option pill
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _customerId = null; _generated = false;
-                      }),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: _customerId == null
-                              ? c.withValues(alpha: 0.10)
-                              : (isDark ? AppColors.surface2Dark : AppColors.surface2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: _customerId == null
-                                  ? c
-                                  : (isDark ? AppColors.separatorDark : AppColors.separator),
-                              width: _customerId == null ? 1.5 : 1),
-                        ),
-                        child: Row(children: [
-                          Icon(Icons.people_rounded, size: 16,
-                              color: _customerId == null ? c : AppColors.inkMuted),
-                          const SizedBox(width: 8),
-                          Text('All Customers', style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: _customerId == null
-                                  ? FontWeight.w700 : FontWeight.w500,
-                              color: _customerId == null ? c : AppColors.inkMuted)),
-                          if (_customerId == null) ...[
-                            const Spacer(),
-                            Icon(Icons.check_circle_rounded, size: 15, color: c),
-                          ],
-                        ]),
-                      ),
-                    ),
-
-                    // Search bar
-                    Container(
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surface2Dark : AppColors.surface2,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: isDark ? AppColors.separatorDark : AppColors.separator),
-                      ),
-                      child: Row(children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Icon(Icons.search_rounded,
-                              color: AppColors.inkMuted, size: 16),
-                        ),
-                        Expanded(child: TextField(
-                          onChanged: (v) => setState(() => _custSearch = v),
-                          style: GoogleFonts.inter(fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: 'Search by name or phone...',
-                            border: InputBorder.none, filled: false,
-                            contentPadding: EdgeInsets.zero,
-                            hintStyle: GoogleFonts.inter(
-                                color: AppColors.inkMuted, fontSize: 13),
-                          ),
-                        )),
-                      ]),
-                    ),
-
-                    // Customer list (constrained height)
-                    if (filteredCusts.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        constraints: const BoxConstraints(maxHeight: 200),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardDark : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: isDark ? AppColors.separatorDark : AppColors.separator),
-                          boxShadow: [BoxShadow(
-                              color: Colors.black.withValues(
-                                  alpha: isDark ? 0.14 : 0.06),
-                              blurRadius: 6, offset: const Offset(0, 2))],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            padding: EdgeInsets.zero,
-                            itemCount: filteredCusts.length,
-                            separatorBuilder: (_, __) => Divider(height: 1,
-                                color: isDark
-                                    ? AppColors.separatorDark : AppColors.separator),
-                            itemBuilder: (ctx, i) {
-                              final cu       = filteredCusts[i];
-                              final lastDate = lastTxnDate[cu.id];
-                              return InkWell(
-                                onTap: () => setState(() {
-                                  _customerId = cu.id;
-                                  _custSearch = '';
-                                  _generated  = false;
-                                }),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 9),
-                                  child: Row(children: [
-                                    CustomerAvatar(
-                                        initials: cu.initials, size: 32),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                      Text(cu.name, style: GoogleFonts.inter(
-                                          fontSize: 13, fontWeight: FontWeight.w700),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                      Row(children: [
-                                        Text(cu.phone, style: GoogleFonts.inter(
-                                            fontSize: 10, color: AppColors.inkMuted)),
-                                        if (lastDate != null)
-                                          Text(
-                                            '  ·  ${() { try { return DateFormat('dd MMM yy').format(DateTime.parse(lastDate)); } catch (_) { return ''; } }()}',
-                                            style: GoogleFonts.inter(
-                                                fontSize: 10, color: AppColors.inkMuted),
-                                          ),
-                                      ]),
-                                    ])),
-                                    if (cu.hasDues)
-                                      _StatusBadge(
-                                          label: '₹${cu.balance.abs().toInt()} Due',
-                                          color: AppColors.dangerColor(isDark))
-                                    else if (cu.hasCredit)
-                                      _StatusBadge(
-                                          label: '₹${cu.balance.toInt()} Cr',
-                                          color: AppColors.successColor(isDark)),
-                                  ]),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ]),
-              ),
-              const SizedBox(height: 12),
-            ],
+            const SizedBox(height: 8),
 
             // ══════════════════════════════════════════════════════════════════
             // 3. LEDGER TYPE FILTER (All / Daily / Event)
@@ -728,28 +649,6 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
         )),
       ]),
     );
-  }
-
-  // ── Custom date range picker ─────────────────────────────────────────────────
-  Future<void> _pickCustomRange(BuildContext context, Color c) async {
-    final range = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(DateTime.now().year - 3),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(start: _from, end: _to),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx)
-            .copyWith(colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: c)),
-        child: child!,
-      ),
-    );
-    if (range != null) {
-      setState(() {
-        _from = range.start;
-        _to = range.end;
-        _generated = false;
-      });
-    }
   }
 
   // cached data for export
@@ -957,7 +856,16 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
   }
 
   Future<pw.Document> _buildPdf() async {
-    final pdf = pw.Document();
+    final interRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+    final interBold = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: interRegular,
+        bold: interBold,
+        fontFallback: [interRegular],
+      ),
+    );
     final dateRange = '${DateFormat('dd MMM yyyy').format(_from)} – ${DateFormat('dd MMM yyyy').format(_to)}';
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
@@ -999,6 +907,8 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
     return pdf;
   }
 
+
+
   String _buildCsv() {
     final buf = StringBuffer();
     buf.writeln(_exportHeads.map((h) => '"$h"').join(','));
@@ -1010,18 +920,33 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
 
   Future<void> _download() async {
     try {
+      final name = '${_exportTitle.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}';
+
       if (_format == 'pdf') {
-        final pdf = await _buildPdf();
+        final pdf   = await _buildPdf();
         final bytes = await pdf.save();
+
+        if (kIsWeb) {
+          // Web has no filesystem — trigger a browser download instead.
+          downloadFileWeb(bytes, '$name.pdf', 'application/pdf');
+          if (context.mounted) showToast(context, '✅ Downloaded', success: true);  // ignore: use_build_context_synchronously
+          return;
+        }
+
         final dir  = await getApplicationDocumentsDirectory();
-        final name = '${_exportTitle.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}';
         final file = File('${dir.path}/$name.pdf');
         await file.writeAsBytes(bytes);
         if (context.mounted) showToast(context, '✅ Saved to Documents', success: true);  // ignore: use_build_context_synchronously
       } else {
-        final csv  = _buildCsv();
+        final csv = _buildCsv();
+
+        if (kIsWeb) {
+          downloadStringWeb(csv, '$name.csv', 'text/csv');
+          if (context.mounted) showToast(context, '✅ Downloaded', success: true);  // ignore: use_build_context_synchronously
+          return;
+        }
+
         final dir  = await getApplicationDocumentsDirectory();
-        final name = '${_exportTitle.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}';
         final file = File('${dir.path}/$name.csv');
         await file.writeAsString(csv);
         if (context.mounted) showToast(context, '✅ CSV saved to Documents', success: true);  // ignore: use_build_context_synchronously
@@ -1033,15 +958,31 @@ class _ReportPageState extends ConsumerState<_ReportPage> {
 
   Future<void> _share() async {
     try {
-      final dir  = await getTemporaryDirectory();
       final name = '${_exportTitle.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}';
+
       if (_format == 'pdf') {
         final pdf   = await _buildPdf();
         final bytes = await pdf.save();
-        final file  = XFile.fromData(bytes, name: '$name.pdf', mimeType: 'application/pdf');
+
+        if (kIsWeb) {
+          // No native share sheet on web — fall back to a direct download.
+          downloadFileWeb(bytes, '$name.pdf', 'application/pdf');
+          if (context.mounted) showToast(context, '✅ Downloaded', success: true);  // ignore: use_build_context_synchronously
+          return;
+        }
+
+        final file = XFile.fromData(bytes, name: '$name.pdf', mimeType: 'application/pdf');
         await Share.shareXFiles([file], subject: _exportTitle);
       } else {
-        final csv  = _buildCsv();
+        final csv = _buildCsv();
+
+        if (kIsWeb) {
+          downloadStringWeb(csv, '$name.csv', 'text/csv');
+          if (context.mounted) showToast(context, '✅ Downloaded', success: true);  // ignore: use_build_context_synchronously
+          return;
+        }
+
+        final dir  = await getTemporaryDirectory();
         final file = File('${dir.path}/$name.csv');
         await file.writeAsString(csv);
         await Share.shareXFiles([XFile(file.path)], subject: _exportTitle);
@@ -1099,7 +1040,7 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
   List<List<String>> _exportRows  = [];
   List<String>       _exportHeads = [];
 
-  static const _presets = ['Today', 'This Week', 'This Month', 'Custom'];
+  static const _presets = ['Today', 'Yesterday', 'This Week', 'This Month', 'This Year', 'Custom'];
 
   @override
   void initState() {
@@ -1556,6 +1497,16 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
                         Text('Generate Report',
                             style: GoogleFonts.inter(
                                 fontSize: 15, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('${calculatePreviewCount()}',
+                              style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w700, fontSize: 13)),
+                        ),
                       ]),
               ),
             ),
@@ -1660,6 +1611,22 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
     }
   }
 
+  int calculatePreviewCount() {
+    final txns = ref.watch(transactionsProvider);
+    if (_customerId == null) return 0;
+    final filt = txns.where((t) {
+      try {
+        final d = DateTime.parse(t.date);
+        return !d.isBefore(_from) && !d.isAfter(_to.add(const Duration(days: 1)));
+      } catch (_) { return false; }
+    }).toList();
+    final byC = filt.where((t) => t.customerId == _customerId).toList();
+    final custTxns = byC.where((t) =>
+        t.customerId != 'EXPENSE' &&
+        (t.coolDelivered > 0 || t.petDelivered > 0)).toList();
+    return custTxns.length;
+  }
+
   // ── Generate ────────────────────────────────────────────────────────────────
   Future<void> _handleGenerate() async {
     if (_customerId == null) {
@@ -1715,28 +1682,98 @@ class _InvoiceFilterScreenState extends ConsumerState<_InvoiceFilterScreen> {
   }
 
   Future<void> _share(BuildContext context) async {
-    final bytes = await _buildPdf();
-    final name  = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
-    final file  = XFile.fromData(bytes, name: name, mimeType: 'application/pdf');
-    await Share.shareXFiles([file], subject: 'Customer Invoice Report');
+    try {
+      if (_format == 'pdf') {
+        final bytes = await _buildPdf();
+        final name  = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+        if (kIsWeb) {
+          downloadFileWeb(bytes, name, 'application/pdf');
+          if (context.mounted) showToast(context, '✅ Report downloaded', success: true);
+        } else {
+          final file = XFile.fromData(bytes, name: name, mimeType: 'application/pdf');
+          await Share.shareXFiles([file], subject: 'Customer Invoice Report');
+        }
+      } else {
+        final csv = _buildCsv();
+        final name = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+        if (kIsWeb) {
+          downloadStringWeb(csv, name, 'text/csv');
+          if (context.mounted) showToast(context, '✅ CSV downloaded', success: true);
+        } else {
+          final dir = await getTemporaryDirectory();
+          final file = File('${dir.path}/$name');
+          await file.writeAsString(csv);
+          await Share.shareXFiles([XFile(file.path)], subject: 'Customer Invoice Report');
+        }
+      }
+    } catch (e) {
+      if (context.mounted) showToast(context, 'Share error: $e', error: true);
+    }
   }
 
   Future<void> _download(BuildContext context) async {
-    final bytes = await _buildPdf();
-    final name  = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
-    await Printing.sharePdf(bytes: bytes, filename: name);
-    if (context.mounted) {
-      showToast(context, '✅ Sharing for download', success: true);
+    try {
+      if (_format == 'pdf') {
+        final bytes = await _buildPdf();
+        final name = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+        if (kIsWeb) {
+          downloadFileWeb(bytes, name, 'application/pdf');
+          if (context.mounted) showToast(context, '✅ Report downloaded', success: true);
+        } else {
+          final dir = await getApplicationDocumentsDirectory();
+          final file = File('${dir.path}/$name');
+          await file.writeAsBytes(bytes);
+          if (context.mounted) showToast(context, '✅ Saved to Documents', success: true);
+        }
+      } else {
+        final csv = _buildCsv();
+        final name = 'invoice_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+        if (kIsWeb) {
+          downloadStringWeb(csv, name, 'text/csv');
+          if (context.mounted) showToast(context, '✅ CSV downloaded', success: true);
+        } else {
+          final dir = await getApplicationDocumentsDirectory();
+          final file = File('${dir.path}/$name');
+          await file.writeAsString(csv);
+          if (context.mounted) showToast(context, '✅ CSV saved to Documents', success: true);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) showToast(context, 'Download error: $e', error: true);
     }
   }
 
   Future<void> _print(BuildContext context) async {
-    final bytes = await _buildPdf();
-    await Printing.layoutPdf(onLayout: (_) => bytes);
+    try {
+      final bytes = await _buildPdf();
+      await Printing.layoutPdf(onLayout: (_) => bytes);
+    } catch (e) {
+      if (context.mounted) showToast(context, 'Print error: $e', error: true);
+    }
   }
 
+  String _buildCsv() {
+    final buf = StringBuffer();
+    buf.writeln(_exportHeads.map((h) => '"$h"').join(','));
+    for (final row in _exportRows) {
+      buf.writeln(row.map((c) => '"${c.replaceAll('"', '""')}"').join(','));
+    }
+    return buf.toString();
+  }
+
+
+
   Future<Uint8List> _buildPdf() async {
-    final doc = pw.Document();
+    final interRegular = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+    final interBold = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));
+
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: interRegular,
+        bold: interBold,
+        fontFallback: [interRegular],
+      ),
+    );
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
       build: (pw.Context ctx) => pw.Column(

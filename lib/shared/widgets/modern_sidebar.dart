@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/app_state.dart';
+import '../../core/theme/app_colors.dart';
 
 // Tab indices
 const int kTabDashboard      = 0;
@@ -32,58 +33,53 @@ class ModernSidebar extends ConsumerWidget {
     return Container(
       width: 260,
       decoration: BoxDecoration(
-        // iOS blue gradient background matching app theme
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF007AFF), // iOS Blue (primary)
-            Color(0xFF5AC8FA), // Light Blue (primaryLight)
-            Color(0xFF0A84FF), // Dark Blue (primaryDM)
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
-        // Glassmorphism effect
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.2),
-            blurRadius: 40,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: SafeArea(
         child: Column(
           children: [
-            // ── Enhanced Sidebar Header with MrWater Logo ─────────────────────
-            _SidebarHeader(isDark: isDark),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF007AFF), // iOS Blue (primary)
+                    Color(0xFF5AC8FA), // Light Blue (primaryLight)
+                    Color(0xFF0A84FF), // Dark Blue (primaryDM)
+                  ],
+                  stops: [0.0, 0.5, 1.0],
+                ),
+              ),
+              child: _SidebarHeader(isDark: isDark),
+            ),
+
+            const Divider(height: 1, thickness: 1),
             
-            const SizedBox(height: 24),
-            
-            // ── Navigation Items ─────────────────────────────────────────────
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: visibleNav.map((item) {
-                  final active = tab == item.tab;
-                  return _ModernNavItem(
-                    item: item,
-                    active: active,
-                    primary: primary,
-                    onTap: () => ref.read(tabProvider.notifier).state = item.tab,
-                  );
-                }).toList(),
+              child: Container(
+                color: Colors.white,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  children: visibleNav.map((item) {
+                    final active = tab == item.tab;
+                    return _ModernNavItem(
+                      item: item,
+                      active: active,
+                      primary: primary,
+                      onTap: () => ref.read(tabProvider.notifier).state = item.tab,
+                    );
+                  }).toList(),
+                ),
               ),
             ),
-            
-            // ── Smart Features Section ───────────────────────────────────────
-            _SmartFeaturesSection(isDark: isDark),
-            
             const SizedBox(height: 16),
           ],
         ),
@@ -99,94 +95,63 @@ class _SidebarHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
       child: Column(
         children: [
-          // Modern MrWater logo with iOS blue theme
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1,
+          // Logo area placed directly on the sidebar gradient (no white inset)
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF007AFF), Color(0xFF5AC8FA)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Image.asset('assets/images/mrwater_logomark.png', fit: BoxFit.contain),
+                ),
               ),
-              // Inner glow effect
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 0),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Logo icon with iOS blue theme
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.9),
-                        Colors.white.withValues(alpha: 0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+              const SizedBox(width: 16),
+              // Brand text with proper alignment
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MrWater',
+                      style: GoogleFonts.inter(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: Colors.white,
+                        height: 1.0,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF007AFF).withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
+                    Text(
+                      'Pro',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2,
+                        color: const Color(0xFF5AC8FA), // Light Blue
+                        height: 1.0,
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.water_drop_rounded,
-                    size: 24,
-                    color: Color(0xFF007AFF), // iOS Blue
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                // Brand text with proper alignment
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MrWater',
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: Colors.white,
-                          height: 1.0,
-                        ),
-                      ),
-                      Text(
-                        'Pro',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 2,
-                          color: const Color(0xFF5AC8FA), // Light Blue
-                          height: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Status indicator with iOS blue theme
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -297,8 +262,8 @@ class _ModernNavItem extends StatelessWidget {
                     item.icon,
                     size: 20,
                     color: active 
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.8),
+                        ? primary
+                        : AppColors.inkMuted,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -313,8 +278,8 @@ class _ModernNavItem extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                           color: active 
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.8),
+                              ? primary
+                              : Theme.of(context).colorScheme.onSurface,
                           height: 1.0,
                         ),
                       ),
@@ -359,183 +324,6 @@ class _ModernNavItem extends StatelessWidget {
   }
 }
 
-// Smart features section with enhanced functionality
-class _SmartFeaturesSection extends ConsumerWidget {
-  final bool isDark;
-  const _SmartFeaturesSection({required this.isDark});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sessionUser = ref.watch(sessionUserProvider);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Actions',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.9),
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          // Smart action buttons
-          _SmartActionButton(
-            icon: Icons.add_rounded,
-            label: 'New Delivery',
-            onTap: () => _showQuickAction(context, 'New Delivery'),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          _SmartActionButton(
-            icon: Icons.search_rounded,
-            label: 'Search Orders',
-            onTap: () => _showQuickAction(context, 'Search Orders'),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          _SmartActionButton(
-            icon: Icons.bar_chart_rounded,
-            label: 'View Analytics',
-            onTap: () => _showQuickAction(context, 'View Analytics'),
-          ),
-          
-          // User info section
-          if (sessionUser != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          sessionUser.name,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                        Text(
-                          sessionUser.role.toString(),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _showQuickAction(BuildContext context, String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$action coming soon!'),
-        backgroundColor: const Color(0xFF6366F1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-}
-
-// Smart action button component
-class _SmartActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SmartActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // Tablet version of modern sidebar (compact)
 class TabletModernSidebar extends ConsumerWidget {
   final int tab;
@@ -544,25 +332,17 @@ class TabletModernSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sessionUser = ref.watch(sessionUserProvider);
-    final visibleNav = _navItems.where((item) =>
-        item.permission == null || sessionUser == null || sessionUser.can(item.permission!)).toList();
+    final visibleNav = _navItems.where((item) {
+      final sessionUser = ref.watch(sessionUserProvider);
+      return item.permission == null || sessionUser == null || sessionUser.can(item.permission!);
+    }).toList();
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF007AFF), // iOS Blue (primary)
-            Color(0xFF5AC8FA), // Light Blue (primaryLight)
-            Color(0xFF0A84FF), // Dark Blue (primaryDM)
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
+        color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -571,95 +351,71 @@ class TabletModernSidebar extends ConsumerWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // Compact logo section
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    width: 1,
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF007AFF),
+                    Color(0xFF5AC8FA),
+                    Color(0xFF0A84FF),
+                  ],
+                  stops: [0.0, 0.5, 1.0],
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.water_drop_rounded,
+                        size: 24,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ),
-                child: const Icon(
-                  Icons.water_drop_rounded,
-                  size: 24,
-                  color: Colors.white,
-                ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'MrWater Pro',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            
-            const SizedBox(height: 16),
-            
-            // Compact navigation
+            const Divider(height: 1, thickness: 1),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                children: visibleNav.map((item) {
-                  final active = tab == item.tab;
-                  return _CompactNavItem(
-                    item: item,
-                    active: active,
-                    onTap: () => ref.read(tabProvider.notifier).state = item.tab,
-                  );
-                }).toList(),
+              child: Container(
+                color: Colors.white,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  children: visibleNav.map((item) {
+                    final active = tab == item.tab;
+                    return _ModernNavItem(
+                      item: item,
+                      active: active,
+                      primary: Theme.of(context).colorScheme.primary,
+                      onTap: () => ref.read(tabProvider.notifier).state = item.tab,
+                    );
+                  }).toList(),
+                ),
               ),
             ),
+            const SizedBox(height: 16),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// Compact navigation item for tablet
-class _CompactNavItem extends StatelessWidget {
-  final NavItem item;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _CompactNavItem({
-    required this.item,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: active 
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: active 
-                    ? Colors.white.withValues(alpha: 0.3)
-                    : Colors.transparent,
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              item.icon,
-              size: 20,
-              color: active 
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.8),
-            ),
-          ),
         ),
       ),
     );

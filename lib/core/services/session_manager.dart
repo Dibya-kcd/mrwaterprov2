@@ -36,56 +36,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_state.dart';
 import 'local_storage_service.dart';
 
-/// How long of inactivity before the app auto-locks.
-const kInactivityTimeout = Duration(minutes: 5);
-
 class SessionManager {
   SessionManager._();
   static final SessionManager instance = SessionManager._();
-
-  DateTime   _lastActivity = DateTime.now();
-  Timer?     _timer;
-  WidgetRef? _ref;
-  bool       _skipNextCheck = false;
 
   // ── Activity tracking ─────────────────────────────────────────────────────
 
   /// Call on every meaningful user interaction (tap, scroll, type, etc.).
   /// Wire this up via an ActivityDetector Listener in your app root.
-  void recordActivity() => _lastActivity = DateTime.now();
+  void recordActivity() {}
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Start the inactivity watchdog. Call once immediately after a successful
   /// PIN unlock AND after calling persistUnlocked().
   void startWatching(WidgetRef ref) {
-    _ref = ref;
-    _timer?.cancel();
-    _lastActivity = DateTime.now(); // always fresh; prevents stale-timestamp instant lock
-    _skipNextCheck = true;          // skip first tick for a safe startup margin
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _check());
-    debugPrint('[SessionManager] Inactivity watchdog started');
+    debugPrint('[SessionManager] Inactivity watchdog disabled');
   }
 
   /// Stop the watchdog. Called automatically by lock().
   void stopWatching() {
-    _timer?.cancel();
-    _timer = null;
-    _ref   = null;
     debugPrint('[SessionManager] Inactivity watchdog stopped');
-  }
-
-  void _check() {
-    if (_skipNextCheck) {
-      _skipNextCheck = false;
-      debugPrint('[SessionManager] First watchdog tick skipped (startup grace)');
-      return;
-    }
-    final idle = DateTime.now().difference(_lastActivity);
-    if (idle >= kInactivityTimeout) {
-      debugPrint('[SessionManager] Inactivity timeout — locking app');
-      if (_ref != null) lock(_ref!);
-    }
   }
 
   // ── Lock / unlock ─────────────────────────────────────────────────────────
@@ -106,21 +77,7 @@ class SessionManager {
     debugPrint('[SessionManager] App locked');
   }
 
-  // FIX 7: persistUnlocked() must be called by _AppGate (or equivalent) right
-  // after setting pinUnlockedProvider = true and before startWatching().
-  // Without this call, isSessionStillValid() will always return false and the
-  // PIN screen re-appears on every warm resume within the inactivity window.
-  //
-  // Example usage in _AppGate:
-  //
-  //   void _onPinUnlocked(bool isOwner) async {
-  //     ref.read(pinUnlockedProvider.notifier).state = true;
-  //     await SessionManager.instance.persistUnlocked();   // ← required
-  //     SessionManager.instance.startWatching(ref);
-  //   }
-
-  /// Write the current timestamp to local storage so warm-resumes within
-  /// kInactivityTimeout can skip the PIN screen.
+  /// Write the current timestamp to local storage so warm-resumes can skip PIN.
   Future<void> persistUnlocked() async {
     try {
       await LocalStorageService.instance
@@ -131,14 +88,12 @@ class SessionManager {
     }
   }
 
-  /// Returns true if the persisted timestamp is within the inactivity window.
-  /// Used by _AppGate on warm resume. Always false after lock() or cold start.
+  /// Returns true always to skip PIN screen on warm resume.
   Future<bool> isSessionStillValid() async {
     try {
       final saved =
           await LocalStorageService.instance.loadPinSessionUnlocked();
-      if (saved == null) return false;
-      return DateTime.now().difference(saved) < kInactivityTimeout;
+      return saved != null;
     } catch (e) {
       debugPrint('[SessionManager] isSessionStillValid error: $e');
       return false;

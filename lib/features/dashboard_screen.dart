@@ -76,8 +76,8 @@ class _DashState extends ConsumerState<DashboardScreen>
             indicatorColor: primary,
             indicatorWeight: 2.5,
             dividerColor: Colors.transparent,
-            labelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
-            unselectedLabelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500),
+            labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
             labelColor: primary,
             unselectedLabelColor: AppColors.inkMuted,
             tabs: const [
@@ -530,19 +530,19 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
               // amounts row
               Row(children: [
                 Text('₹${totalUnpaid.toInt()}',
-                    style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800,
+                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800,
                         color: AppColors.dangerColor(isDark))),
                 const Spacer(),
                 Text('₹${totalPaid.toInt()}',
-                    style: GoogleFonts.syne(fontSize: 18, fontWeight: FontWeight.w800,
+                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800,
                         color: AppColors.warningColor(isDark))),
               ]),
               Row(children: [
                 Text('Overdue',
-                    style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.inkMuted)),
+                    style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
                 const Spacer(),
                 Text('Not due yet',
-                    style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.inkMuted)),
+                    style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
               ]),
               const SizedBox(height: 8),
               ClipRRect(
@@ -579,10 +579,10 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
           const SizedBox(height: 10),
 
           Text('₹${plNet.toInt()}',
-              style: GoogleFonts.syne(fontSize: 26, fontWeight: FontWeight.w800,
+              style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w800,
                   color: plNet >= 0 ? AppColors.successColor(isDark) : AppColors.dangerColor(isDark))),
           Text('Net income for $_plFilter',
-              style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.inkMuted)),
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
 
           const SizedBox(height: 16),
 
@@ -596,11 +596,11 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
           Row(children: [
             _LegendDot(color: AppColors.successColor(isDark)),
             const SizedBox(width: 5),
-            Text('Revenue', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.inkMuted)),
+            Text('Revenue', style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
             const SizedBox(width: 16),
             _LegendDot(color: AppColors.dangerColor(isDark)),
             const SizedBox(width: 5),
-            Text('Expenses', style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.inkMuted)),
+            Text('Expenses', style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
           ]),
         ])),
 
@@ -646,9 +646,9 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
                   _LegendDot(color: col, size: 10),
                   const SizedBox(width: 10),
                   Expanded(child: Text(entry.key,
-                      style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500))),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500))),
                   Text('₹${entry.value.toInt()}',
-                      style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700)),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
                 ]),
               ),
               if (idx < expMap.length - 1)
@@ -659,11 +659,11 @@ class _AnalyticsTabState extends ConsumerState<_AnalyticsTab> {
           Divider(height: 20, color: isDark ? AppColors.separatorDark : AppColors.separator),
           Row(children: [
             Text('Total Expense',
-                style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w800,
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800,
                     color: Theme.of(context).colorScheme.onSurface)),
             const Spacer(),
             Text('₹${expTotal.toInt()}',
-                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800,
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800,
                     color: AppColors.dangerColor(isDark))),
           ]),
         ])),
@@ -702,7 +702,7 @@ class _CardHeader extends StatelessWidget {
   const _CardHeader({required this.title});
   @override
   Widget build(BuildContext context) => Text(title,
-      style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w800,
+      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800,
           color: Theme.of(context).colorScheme.onSurface));
 }
 
@@ -724,10 +724,10 @@ class _StatTile extends StatelessWidget {
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
-        child: Text(value, style: GoogleFonts.syne(
+        child: Text(value, style: GoogleFonts.inter(
             fontSize: 15, fontWeight: FontWeight.w800, color: color))),
       const SizedBox(height: 2),
-      Text(label, style: GoogleFonts.dmSans(
+      Text(label, style: GoogleFonts.inter(
           fontSize: 9, fontWeight: FontWeight.w600, color: color),
           maxLines: 1, overflow: TextOverflow.ellipsis),
     ]),
@@ -751,12 +751,12 @@ class _InvoiceStat extends StatelessWidget {
       border: Border.all(color: color.withValues(alpha: 0.20)),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: GoogleFonts.dmSans(
+      Text(label, style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w600, color: color)),
       const SizedBox(height: 4),
-      Text(value, style: GoogleFonts.syne(
+      Text(value, style: GoogleFonts.inter(
           fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-      Text(sub, style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.inkMuted)),
+      Text(sub, style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
     ]),
   );
 }
@@ -785,7 +785,7 @@ class _FilterDropdown extends StatelessWidget {
               offset.dx + box.size.width, 0),
           items: options.map((o) => PopupMenuItem(
             value: o,
-            child: Text(o, style: GoogleFonts.dmSans(
+            child: Text(o, style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: o == value ? FontWeight.w700 : FontWeight.w400,
                 color: o == value ? primary : Theme.of(context).colorScheme.onSurface)),

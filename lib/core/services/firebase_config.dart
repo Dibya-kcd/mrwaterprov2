@@ -8,6 +8,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../firebase_options.dart';
 
 class FirebaseConfig {
   FirebaseConfig._();
@@ -30,24 +31,40 @@ class FirebaseConfig {
   static String _clean(String s) =>
       s.trim().replaceAll('`', '').replaceAll('"', '').replaceAll("'", '');
 
-  static String get apiKey => _clean(_apiKeyRaw);
-  static String get apiKeyAndroid => _clean(_apiKeyAndroidRaw);
-  static String get authDomain => _clean(_authDomainRaw);
+  static String get apiKey => _clean(_apiKeyRaw).isEmpty 
+      ? DefaultFirebaseOptions.web.apiKey 
+      : _clean(_apiKeyRaw);
+  static String get apiKeyAndroid => _clean(_apiKeyAndroidRaw).isEmpty 
+      ? DefaultFirebaseOptions.android.apiKey 
+      : _clean(_apiKeyAndroidRaw);
+  static String get authDomain => _clean(_authDomainRaw).isEmpty 
+      ? DefaultFirebaseOptions.web.authDomain! 
+      : _clean(_authDomainRaw);
 
   static String get databaseUrl {
     var url = _clean(_databaseUrlRaw);
+    if (url.isEmpty) {
+      url = DefaultFirebaseOptions.web.databaseURL!;
+    }
     if (url.endsWith('/')) url = url.substring(0, url.length - 1);
     return url;
   }
 
-  static String get projectId => _clean(_projectIdRaw);
-  static String get storageBucket => _clean(_storageRaw);
-  static String get senderId => _clean(_senderIdRaw);
+  static String get projectId => _clean(_projectIdRaw).isEmpty 
+      ? DefaultFirebaseOptions.web.projectId 
+      : _clean(_projectIdRaw);
+  static String get storageBucket => _clean(_storageRaw).isEmpty 
+      ? (DefaultFirebaseOptions.web.storageBucket ?? '')
+      : _clean(_storageRaw);
+  static String get senderId => _clean(_senderIdRaw).isEmpty 
+      ? DefaultFirebaseOptions.web.messagingSenderId
+      : _clean(_senderIdRaw);
 
   static String get appId {
     final id = _clean(_appIdRaw);
     if (id.isNotEmpty) return id;
-    return _clean(_appIdWebRaw);
+    if (_clean(_appIdWebRaw).isNotEmpty) return _clean(_appIdWebRaw);
+    return kIsWeb ? DefaultFirebaseOptions.web.appId : DefaultFirebaseOptions.android.appId;
   }
 
   static String get apiKeyForPlatform {
@@ -58,13 +75,11 @@ class FirebaseConfig {
   static String get appIdAndroid {
     final id = _clean(_appIdAndroidRaw);
     if (id.isNotEmpty) return id;
-    return _clean(_appIdRaw);
+    if (_clean(_appIdRaw).isNotEmpty) return _clean(_appIdRaw);
+    return DefaultFirebaseOptions.android.appId;
   }
 
-  static bool get isConfigured =>
-      (apiKey.isNotEmpty || apiKeyAndroid.isNotEmpty) &&
-      projectId.isNotEmpty &&
-      databaseUrl.isNotEmpty;
+  static bool get isConfigured => true;
 
   // ── RTDB node paths ───────────────────────────────────────────────────────
   static const nodeSettings         = 'settings';
@@ -84,13 +99,5 @@ class FirebaseConfig {
   static const nodePayments         = 'payments';
 
   // ── FirebaseOptions ───────────────────────────────────────────────────────
-  static FirebaseOptions get currentPlatform => FirebaseOptions(
-        apiKey: apiKeyForPlatform,
-        appId: kIsWeb ? appId : appIdAndroid,
-        messagingSenderId: senderId,
-        projectId: projectId,
-        authDomain: kIsWeb ? authDomain : null,
-        databaseURL: databaseUrl,
-        storageBucket: storageBucket,
-      );
+  static FirebaseOptions get currentPlatform => DefaultFirebaseOptions.currentPlatform;
 }

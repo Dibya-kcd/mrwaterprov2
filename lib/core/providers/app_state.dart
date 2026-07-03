@@ -1081,6 +1081,7 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
   }
 
   Future<void> _save() async {
+    debugPrint('[InventoryNotifier] _save: coolTotal=${state.coolTotal} coolStock=${state.coolStock} petTotal=${state.petTotal} petStock=${state.petStock}');
     await FirebaseService.instance.writeInventory({
       'coolTotal': state.coolTotal,
       'coolStock': state.coolStock,
@@ -1090,6 +1091,7 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
   }
 
   void _apply(JarTransaction tx) {
+    debugPrint('[InventoryNotifier] _apply tx=${tx.id} cd=${tx.coolDelivered} cr=${tx.coolReturned} cdm=${tx.coolDamaged} pd=${tx.petDelivered} pr=${tx.petReturned} pdm=${tx.petDamaged}');
     // The ceiling for coolStock after apply is the pre-damage total
     // (state.coolTotal), because damage is being removed from total simultaneously.
     // The net result must always satisfy: 0 <= coolStock <= newCoolTotal.
@@ -1526,6 +1528,7 @@ class TransactionsNotifier extends StateNotifier<List<JarTransaction>> {
 
   Future<void> add(JarTransaction tx) async {
     _assertAuth();
+    debugPrint('[TransactionsNotifier] add tx=${tx.id} cust=${tx.customerName}');
     await FirebaseService.instance
         .setChild(FirebaseConfig.nodeTransactions, tx.id, tx.toJson());
     final updatedCust =

@@ -24,6 +24,7 @@ import 'features/modern_company_login_screen.dart';
 import 'features/main_scaffold.dart';
 import 'features/modern_pin_lock_screen.dart';
 import 'features/modern_splash_screen.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,47 +33,15 @@ void main() async {
   debugPrint('Build Date: 2026-04-18 (FIX v2)');
 
   try {
-    debugPrint('Firebase: Initializing for ${FirebaseConfig.projectId}...');
-    if (FirebaseConfig.isConfigured) {
-      debugPrint('Firebase: Config looks OK (API Key found)');
-      debugPrint('Firebase: Database URL = [${FirebaseConfig.databaseUrl}]');
-
-      final key = FirebaseConfig.apiKey;
-      final appId = FirebaseConfig.appId;
-      final maskedKey = key.length > 8
-          ? '${key.substring(0, 4)}...${key.substring(key.length - 4)}'
-          : 'INVALID';
-      final maskedAppId = appId.length > 8
-          ? '${appId.substring(0, 4)}...${appId.substring(appId.length - 4)}'
-          : 'INVALID';
-
-      debugPrint('Firebase: Masked API Key = $maskedKey');
-      debugPrint('Firebase: Masked App ID  = $maskedAppId');
-      debugPrint('Firebase: Auth Domain    = ${FirebaseConfig.authDomain}');
-
-      if (FirebaseConfig.appId.length < 30) {
-        debugPrint(
-            'Firebase: ⚠️ WARNING: App ID seems too short! Please verify it in GitHub Secrets.');
-      }
-    } else {
-      debugPrint(
-          'Firebase: ⚠️ WARNING: Missing API Key or Project ID in build config!');
-    }
+    debugPrint('Firebase: Initializing with firebase_options.dart...');
 
     try {
-      if (FirebaseConfig.isConfigured) {
-        debugPrint('Firebase: Initializing with dart-define options');
-        await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
-      } else if (!kIsWeb) {
-        debugPrint(
-            'Firebase: No dart-define config found; attempting native platform initialization');
-        await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+        debugPrint('Firebase: App initialized successfully');
       } else {
-        debugPrint(
-            'Firebase: Missing web configuration and no native fallback available');
-        throw StateError('Firebase web configuration is missing');
+        debugPrint('Firebase: App already initialized');
       }
-      debugPrint('Firebase: App initialized successfully');
     } catch (e) {
       debugPrint('Firebase initialization CRITICAL error: $e');
       rethrow;
