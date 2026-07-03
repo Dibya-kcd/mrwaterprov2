@@ -216,6 +216,11 @@ class _ModernNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const inactiveLabelColor = Color(0xFF4A4A4A);
+    const inactiveDescriptionColor = Color(0xFF888888);
+    const inactiveIconBgColor = Color(0xFFF0F0F0);
+    const activeBgColor = Color(0xFFEFF6FF);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -227,25 +232,16 @@ class _ModernNavItem extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              // Glassmorphism effect for active state
               color: active 
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.05),
+                  ? activeBgColor
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: active 
-                    ? Colors.white.withValues(alpha: 0.3)
-                    : Colors.white.withValues(alpha: 0.1),
+                    ? primary.withValues(alpha: 0.2)
+                    : Colors.transparent,
                 width: 1,
               ),
-              // Subtle shadow for active state
-              boxShadow: active ? [
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ] : null,
             ),
             child: Row(
               children: [
@@ -254,8 +250,8 @@ class _ModernNavItem extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: active 
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.1),
+                        ? primary.withValues(alpha: 0.1)
+                        : inactiveIconBgColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -263,7 +259,7 @@ class _ModernNavItem extends StatelessWidget {
                     size: 20,
                     color: active 
                         ? primary
-                        : AppColors.inkMuted,
+                        : inactiveLabelColor,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -279,7 +275,7 @@ class _ModernNavItem extends StatelessWidget {
                           fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                           color: active 
                               ? primary
-                              : Theme.of(context).colorScheme.onSurface,
+                              : inactiveLabelColor,
                           height: 1.0,
                         ),
                       ),
@@ -290,7 +286,9 @@ class _ModernNavItem extends StatelessWidget {
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.6),
+                            color: active 
+                                ? primary.withValues(alpha: 0.7)
+                                : inactiveDescriptionColor,
                             height: 1.0,
                           ),
                         ),
@@ -306,8 +304,8 @@ class _ModernNavItem extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.white.withValues(alpha: 0.8),
-                          Colors.white.withValues(alpha: 0.4),
+                          primary,
+                          primary.withValues(alpha: 0.5),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,

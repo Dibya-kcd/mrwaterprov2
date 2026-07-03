@@ -441,6 +441,7 @@ class _BurgerDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    const inactiveLabelColor = Color(0xFF4A4A4A);
     final primary     = Theme.of(context).colorScheme.primary;
     final sessionUser = ref.watch(sessionUserProvider);
     final visibleNav  = _navItems.where((item) =>
@@ -496,12 +497,12 @@ class _BurgerDrawer extends ConsumerWidget {
                 ),
                 child: Row(children: [
                   Icon(item.icon, size: 20,
-                      color: active ? primary : AppColors.inkMuted),
+                      color: active ? primary : inactiveLabelColor),
                   const SizedBox(width: 14),
                   Text(item.label, style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      color: active ? primary : Theme.of(context).colorScheme.onSurface)),
+                      color: active ? primary : inactiveLabelColor)),
                   if (active) ...[
                     const Spacer(),
                     Container(
@@ -518,7 +519,7 @@ class _BurgerDrawer extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Text('MrWater v2.0', style: GoogleFonts.jetBrainsMono(
-              fontSize: 10, color: AppColors.inkMuted)),
+              fontSize: 10, color: const Color(0xFF888888))),
         ),
       ])),
     );
@@ -710,6 +711,7 @@ class _Sidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    const inactiveLabelColor = Color(0xFF4A4A4A);
     final primary     = Theme.of(context).colorScheme.primary;
     final sessionUser = ref.watch(sessionUserProvider);
     final visibleNav  = _navItems.where((item) =>
@@ -773,12 +775,12 @@ class _Sidebar extends ConsumerWidget {
                       ),
                       child: Row(children: [
                         Icon(item.icon, size: 18,
-                            color: active ? primary : AppColors.inkMuted),
+                            color: active ? primary : inactiveLabelColor),
                         const SizedBox(width: 10),
                         Text(item.label, style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                            color: active ? primary : Theme.of(context).colorScheme.onSurface)),
+                            color: active ? primary : inactiveLabelColor)),
                       ]),
                     ),
                   );
