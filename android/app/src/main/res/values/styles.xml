@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App launch theme shown while Flutter initializes. -->
+    <style name="LaunchTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">?android:attr/windowBackground</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+    </style>
+
+    <!-- Normal app theme used after Flutter loads. -->
+    <style name="NormalTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">?android:attr/windowBackground</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+    </style>
+</resources>
